@@ -175,7 +175,7 @@ export default function KennelLandingView({
             <img
               src={kennel.cover_photo_url}
               alt={`${kennel.name} cover photo`}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-top"
             />
           ) : (
             <div className="hero-fallback absolute inset-0" />
