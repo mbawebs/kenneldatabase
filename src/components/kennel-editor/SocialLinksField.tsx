@@ -37,26 +37,39 @@ export default function SocialLinksField({
       {links.map((link, index) => {
         const platformInfo = SOCIAL_PLATFORMS.find((p) => p.value === link.platform);
         return (
-          <div key={`${uid}-${index}`} className="flex items-center gap-2">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-saddle/25 text-onlight dark:border-brass/25 dark:text-ink-text">
-              <SocialIcon platform={link.platform} className="h-5 w-5" />
-            </span>
-            <select
-              value={link.platform}
-              onChange={(e) =>
-                updateLink(index, {
-                  platform: e.target.value as SocialLink["platform"],
-                })
-              }
-              className={`${inputClass} w-auto shrink-0`}
-              aria-label="Platform"
-            >
-              {SOCIAL_PLATFORMS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+          <div
+            key={`${uid}-${index}`}
+            className="space-y-2 rounded-lg border border-saddle/20 p-3 dark:border-brass/20"
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-saddle/25 text-onlight dark:border-brass/25 dark:text-ink-text">
+                <SocialIcon platform={link.platform} className="h-4 w-4" />
+              </span>
+              <select
+                value={link.platform}
+                onChange={(e) =>
+                  updateLink(index, {
+                    platform: e.target.value as SocialLink["platform"],
+                  })
+                }
+                className={`${inputClass} min-w-0 flex-1`}
+                aria-label="Platform"
+              >
+                {SOCIAL_PLATFORMS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => removeLink(index)}
+                aria-label="Remove link"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-oxblood/30 text-oxblood dark:border-oxblood-2/50 dark:text-oxblood-2"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            </div>
             <input
               value={link.value}
               onChange={(e) => updateLink(index, { value: e.target.value })}
@@ -64,14 +77,6 @@ export default function SocialLinksField({
               className={inputClass}
               aria-label={`${platformInfo?.label ?? "Link"} value`}
             />
-            <button
-              type="button"
-              onClick={() => removeLink(index)}
-              aria-label="Remove link"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-oxblood/30 text-oxblood dark:border-oxblood-2/50 dark:text-oxblood-2"
-            >
-              <TrashIcon className="h-4 w-4" />
-            </button>
           </div>
         );
       })}
