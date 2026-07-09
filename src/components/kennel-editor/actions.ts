@@ -103,10 +103,12 @@ export async function updateKennel(
     updates.accent_color = accentColor;
   }
 
-  // El campo "plan" solo existe en el formulario cuando lo renderiza
-  // un admin (ver KennelInfoForm), pero por si alguien lo agregara a
-  // mano al HTML, igual lo ignoramos aqui a menos que quien llama
-  // realmente sea admin.
+  // El campo "plan" y "slug" solo existen en el formulario cuando lo
+  // renderiza un admin (ver KennelInfoForm), pero por si alguien los
+  // agregara a mano al HTML, igual los ignoramos aqui a menos que
+  // quien llama realmente sea admin — el slug en particular es la URL
+  // publica del kennel, y cambiarla rompe cualquier link que el dueño
+  // ya haya compartido, asi que el cliente nunca debe poder tocarla.
   if (isAdmin) {
     const plan = String(formData.get("plan") ?? "").trim();
     if (plan) {
@@ -114,6 +116,16 @@ export async function updateKennel(
         return { error: "Invalid plan." };
       }
       updates.plan = plan;
+    }
+
+    const slug = String(formData.get("slug") ?? "").trim();
+    if (slug) {
+      if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+        return {
+          error: "Slug can only contain lowercase letters, numbers, and hyphens.",
+        };
+      }
+      updates.slug = slug;
     }
   }
 
@@ -124,6 +136,9 @@ export async function updateKennel(
     .eq("id", kennelId);
 
   if (error) {
+    if (error.code === "23505") {
+      return { error: "That slug is already taken by another kennel." };
+    }
     return { error: error.message };
   }
 

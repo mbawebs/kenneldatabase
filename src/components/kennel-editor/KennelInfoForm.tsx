@@ -231,7 +231,25 @@ export default function KennelInfoForm({
 
       {isAdmin && (
         <div className="space-y-4">
-          <p className={groupTitleClass}>Plan</p>
+          <p className={groupTitleClass}>Admin only</p>
+          <div className="space-y-1.5">
+            <label htmlFor={fieldId("slug")} className={labelClass}>
+              Public URL slug
+            </label>
+            <input
+              id={fieldId("slug")}
+              name="slug"
+              value={draft.slug}
+              onChange={(e) => update("slug", e.target.value)}
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              className={inputClass}
+            />
+            <p className="text-xs text-oxblood dark:text-oxblood-2">
+              Changing this breaks any link the owner already shared
+              (social media, business cards, etc). Only change it if you
+              really need to.
+            </p>
+          </div>
           <div className="space-y-1.5 sm:w-1/2">
             <label htmlFor={fieldId("plan")} className={labelClass}>
               Plan
