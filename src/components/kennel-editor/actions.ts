@@ -399,3 +399,44 @@ export async function deleteBreeding(formData: FormData) {
   revalidatePath(`/admin/kennels/${existing.kennel_id}`);
   revalidatePath("/[slug]", "page");
 }
+
+// Estas dos se llaman directo desde el cliente (no vienen de un
+// <form>), justo despues de soltar el drag en la lista de una
+// seccion — por eso re-verifican acceso igual que las demas.
+export async function reorderDogs(kennelId: string, orderedIds: string[]) {
+  await requireKennelAccess(kennelId);
+
+  const supabase = await createClient();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase
+        .from("dogs")
+        .update({ display_order: index })
+        .eq("id", id)
+        .eq("kennel_id", kennelId)
+    )
+  );
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/admin/kennels/${kennelId}`);
+  revalidatePath("/[slug]", "page");
+}
+
+export async function reorderBreedings(kennelId: string, orderedIds: string[]) {
+  await requireKennelAccess(kennelId);
+
+  const supabase = await createClient();
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase
+        .from("breedings")
+        .update({ display_order: index })
+        .eq("id", id)
+        .eq("kennel_id", kennelId)
+    )
+  );
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/admin/kennels/${kennelId}`);
+  revalidatePath("/[slug]", "page");
+}

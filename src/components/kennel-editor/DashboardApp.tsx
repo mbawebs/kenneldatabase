@@ -2,10 +2,27 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import KennelInfoForm from "./KennelInfoForm";
 import DogForm from "./DogForm";
 import BreedingForm from "./BreedingForm";
-import { deleteDog, deleteBreeding } from "./actions";
+import { deleteDog, deleteBreeding, reorderDogs, reorderBreedings } from "./actions";
 import type { Kennel, Dog, Breeding, DogCategory } from "@/lib/supabase/types";
 import {
   HomeIcon,
@@ -23,6 +40,7 @@ import {
   CopyIcon,
   CheckIcon,
   ExternalLinkIcon,
+  GripIcon,
 } from "./icons";
 
 type IconComponent = (props: { className?: string }) => React.JSX.Element;
@@ -198,6 +216,7 @@ export default function DashboardApp({
       content = (
         <SectionListScreen
           items={items}
+          kennelId={kennel.id}
           emptyHint={section.emptyHint}
           onAdd={() =>
             setView({ screen: "dog-edit", sectionKey: section.key, dogId: null })
@@ -235,6 +254,7 @@ export default function DashboardApp({
     content = (
       <BreedingsListScreen
         items={breedings}
+        kennelId={kennel.id}
         onAdd={() => setView({ screen: "breeding-edit", breedingId: null })}
         onEdit={(id) => setView({ screen: "breeding-edit", breedingId: id })}
       />
@@ -500,20 +520,26 @@ function PublicLinkCard({ publicUrl }: { publicUrl: string }) {
 
 function SectionListScreen({
   items,
+  kennelId,
   emptyHint,
   onAdd,
   onEdit,
 }: {
   items: Dog[];
+  kennelId: string;
   emptyHint: string;
   onAdd: () => void;
   onEdit: (id: string) => void;
 }) {
   return (
-    <div className="space-y-3 pb-24">
-      {items.map((dog) => (
+    <SortableListScreen
+      items={items}
+      kennelId={kennelId}
+      emptyHint={emptyHint}
+      onAdd={onAdd}
+      onReorder={reorderDogs}
+      renderRow={(dog) => (
         <ItemRow
-          key={dog.id}
           photo={dog.photos?.[0]}
           title={dog.name}
           subtitle={[dog.breed, dog.color].filter(Boolean).join(" · ")}
@@ -523,7 +549,119 @@ function SectionListScreen({
           deleteFieldValue={dog.id}
           confirmMessage={`Delete ${dog.name}? This can't be undone.`}
         />
-      ))}
+      )}
+    />
+  );
+}
+
+function BreedingsListScreen({
+  items,
+  kennelId,
+  onAdd,
+  onEdit,
+}: {
+  items: Breeding[];
+  kennelId: string;
+  onAdd: () => void;
+  onEdit: (id: string) => void;
+}) {
+  return (
+    <SortableListScreen
+      items={items}
+      kennelId={kennelId}
+      emptyHint="Add your first breeding"
+      onAdd={onAdd}
+      onReorder={reorderBreedings}
+      renderRow={(breeding) => (
+        <ItemRow
+          photo={breeding.photos?.[0]}
+          title={breeding.title ?? "Untitled breeding"}
+          subtitle={[breeding.sire_name, breeding.dam_name].filter(Boolean).join(" x ")}
+          onEdit={() => onEdit(breeding.id)}
+          deleteAction={deleteBreeding}
+          deleteFieldName="breeding_id"
+          deleteFieldValue={breeding.id}
+          confirmMessage="Delete this breeding? This can't be undone."
+        />
+      )}
+    />
+  );
+}
+
+// Lista generica reordenable por drag (perros o cruzas, misma logica
+// en ambos): mantiene un orden local para feedback instantaneo al
+// soltar, guarda el nuevo orden en el servidor, y refresca los datos
+// del dashboard cuando termina.
+function SortableListScreen<T extends { id: string }>({
+  items,
+  kennelId,
+  emptyHint,
+  onAdd,
+  onReorder,
+  renderRow,
+}: {
+  items: T[];
+  kennelId: string;
+  emptyHint: string;
+  onAdd: () => void;
+  onReorder: (kennelId: string, orderedIds: string[]) => Promise<void>;
+  renderRow: (item: T) => React.ReactNode;
+}) {
+  const router = useRouter();
+  // "items" es un array NUEVO en cada render de DashboardApp (viene de
+  // un .filter()), aunque su contenido no haya cambiado — comparar por
+  // referencia reseteaba el orden local a medio drag, justo cuando el
+  // preview en vivo disparaba un re-render. Se compara por contenido
+  // (ids en su orden de props) en vez de por referencia.
+  const itemIdsKey = items.map((item) => item.id).join(",");
+  const [orderedIds, setOrderedIds] = useState(() => items.map((item) => item.id));
+  const [prevKey, setPrevKey] = useState(itemIdsKey);
+  if (itemIdsKey !== prevKey) {
+    setPrevKey(itemIdsKey);
+    setOrderedIds(items.map((item) => item.id));
+  }
+
+  const itemsById = useMemo(
+    () => new Map(items.map((item) => [item.id, item])),
+    [items]
+  );
+  const orderedItems = orderedIds
+    .map((id) => itemsById.get(id))
+    .filter((item): item is T => Boolean(item));
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedIds.indexOf(String(active.id));
+    const newIndex = orderedIds.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    const next = arrayMove(orderedIds, oldIndex, newIndex);
+    setOrderedIds(next);
+    onReorder(kennelId, next).then(() => router.refresh());
+  }
+
+  return (
+    <div className="space-y-3 pb-24">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
+          {orderedItems.map((item) => (
+            <SortableRow key={item.id} id={item.id}>
+              {renderRow(item)}
+            </SortableRow>
+          ))}
+        </SortableContext>
+      </DndContext>
 
       {items.length === 0 && (
         <p className="text-sm text-onlight-dim dark:text-ink-text-dim">
@@ -543,45 +681,35 @@ function SectionListScreen({
   );
 }
 
-function BreedingsListScreen({
-  items,
-  onAdd,
-  onEdit,
+function SortableRow({
+  id,
+  children,
 }: {
-  items: Breeding[];
-  onAdd: () => void;
-  onEdit: (id: string) => void;
+  id: string;
+  children: React.ReactNode;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
   return (
-    <div className="space-y-3 pb-24">
-      {items.map((breeding) => (
-        <ItemRow
-          key={breeding.id}
-          photo={breeding.photos?.[0]}
-          title={breeding.title ?? "Untitled breeding"}
-          subtitle={[breeding.sire_name, breeding.dam_name].filter(Boolean).join(" x ")}
-          onEdit={() => onEdit(breeding.id)}
-          deleteAction={deleteBreeding}
-          deleteFieldName="breeding_id"
-          deleteFieldValue={breeding.id}
-          confirmMessage="Delete this breeding? This can't be undone."
-        />
-      ))}
-
-      {items.length === 0 && (
-        <p className="text-sm text-onlight-dim dark:text-ink-text-dim">
-          Add your first breeding.
-        </p>
-      )}
-
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2">
       <button
         type="button"
-        onClick={onAdd}
-        className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-saddle/30 py-3.5 text-sm font-bold uppercase tracking-wide text-onlight dark:border-brass/30 dark:text-ink-text"
+        {...attributes}
+        {...listeners}
+        aria-label="Drag to reorder"
+        className="flex h-9 w-9 shrink-0 touch-none items-center justify-center rounded-full border border-saddle/25 text-onlight-dim dark:border-brass/25 dark:text-ink-text-dim"
       >
-        <PlusIcon className="h-4 w-4" />
-        Add
+        <GripIcon className="h-4 w-4" />
       </button>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }

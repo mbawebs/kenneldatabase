@@ -99,7 +99,7 @@ export default function KennelInfoForm({
           <ImageUploadField
             name="logo_url"
             label="Logo"
-            hint="Square works best"
+            hint="Square, at least 400×400px"
             kennelId={kennel.id}
             folder="logo"
             aspect="square"
@@ -110,7 +110,7 @@ export default function KennelInfoForm({
             <ImageUploadField
               name="cover_photo_url"
               label="Cover photo"
-              hint="A wide photo for the top of your page"
+              hint="Wide, around 1600×900px, subject centered near the top — very tall or close-up photos may get cropped on some screens"
               kennelId={kennel.id}
               folder="cover"
               aspect="wide"

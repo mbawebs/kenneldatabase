@@ -43,6 +43,7 @@ export default async function AdminKennelManagePage({
         .from("breedings")
         .select("*")
         .eq("kennel_id", id)
+        .order("display_order", { ascending: true })
         .order("date", { ascending: false }),
     ]);
 

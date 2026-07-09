@@ -94,6 +94,7 @@ export interface Breeding {
   description: string | null;
   photos: string[] | null;
   date: string | null;
+  display_order: number;
   created_at: string;
 }
 

@@ -43,6 +43,7 @@ export default async function DashboardPage() {
         .from("breedings")
         .select("*")
         .eq("kennel_id", membership.kennel_id)
+        .order("display_order", { ascending: true })
         .order("date", { ascending: false }),
     ]);
 

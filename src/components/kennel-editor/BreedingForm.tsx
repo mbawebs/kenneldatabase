@@ -45,6 +45,7 @@ export default function BreedingForm({
       dam_name: null,
       description: null,
       photos: null,
+      display_order: 100,
       date: null,
       created_at: new Date().toISOString(),
     }

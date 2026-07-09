@@ -124,6 +124,9 @@ export default function MultiImageUploadField({
       >
         {label}
       </label>
+      <p className="text-xs text-onlight-dim dark:text-ink-text-dim">
+        Square or portrait photos work best, at least 800×800px.
+      </p>
 
       {urls.map((url) => (
         <input key={url} type="hidden" name={name} value={url} />

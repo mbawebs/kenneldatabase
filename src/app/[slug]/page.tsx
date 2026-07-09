@@ -55,6 +55,7 @@ export default async function KennelPage({ params }: PageProps<"/[slug]">) {
       .from("breedings")
       .select("*")
       .eq("kennel_id", kennel.id)
+      .order("display_order", { ascending: true })
       .order("date", { ascending: false }),
   ]);
 
