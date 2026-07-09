@@ -78,11 +78,11 @@ export default function KennelLandingView({
       key: "breedings",
       label: "Breedings",
       node: (
-        <div className="flex flex-wrap justify-center gap-4">
+        <CarouselRow count={breedings.length}>
           {breedings.map((breeding) => (
             <BreedingCard key={breeding.id} breeding={breeding} />
           ))}
-        </div>
+        </CarouselRow>
       ),
     });
   }
@@ -288,10 +288,52 @@ function SectionTitle({
 
 function CardRow({ dogs }: { dogs: Dog[] }) {
   return (
-    <div className="flex flex-wrap justify-center gap-4">
+    <CarouselRow count={dogs.length}>
       {dogs.map((dog) => (
         <DogCard key={dog.id} dog={dog} />
       ))}
+    </CarouselRow>
+  );
+}
+
+// En movil, cada seccion es su propio carrusel horizontal (con
+// snap-scroll y una pista de que hay mas si aplica) en vez de una
+// pila vertical continua — asi se nota donde termina una seccion y
+// empieza la siguiente. En escritorio (sm:) se comporta igual que
+// antes: las tarjetas se acomodan en filas centradas, sin scroll.
+function CarouselRow({
+  count,
+  children,
+}: {
+  count: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      <div
+        className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
+        style={{ scrollPaddingInline: "1.5rem" }}
+      >
+        {children}
+      </div>
+      {count > 1 && (
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 flex w-14 items-center justify-end bg-gradient-to-l from-ink via-ink/70 to-transparent sm:hidden"
+          aria-hidden="true"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="mr-2 h-5 w-5 text-ink-text/80"
+          >
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </div>
+      )}
     </div>
   );
 }
@@ -305,7 +347,7 @@ function DogCard({ dog }: { dog: Dog }) {
   ].filter(Boolean) as { label: string; value: string }[];
 
   return (
-    <div className="flex w-full flex-col bg-ink-2 sm:w-[440px] sm:flex-row">
+    <div className="w-[78vw] max-w-[300px] shrink-0 snap-start flex flex-col bg-ink-2 sm:w-[440px] sm:max-w-none sm:shrink sm:flex-row">
       <div className="w-full sm:w-2/5 sm:shrink-0">
         <div className="aspect-video w-full bg-ink-3 sm:aspect-[3/4]">
           {photo ? (
@@ -386,7 +428,7 @@ function BreedingCard({ breeding }: { breeding: Breeding }) {
   ].filter(Boolean) as { label: string; value: string }[];
 
   return (
-    <div className="flex w-full flex-col bg-ink-2 sm:w-[440px] sm:flex-row">
+    <div className="w-[78vw] max-w-[300px] shrink-0 snap-start flex flex-col bg-ink-2 sm:w-[440px] sm:max-w-none sm:shrink sm:flex-row">
       <div className="w-full sm:w-2/5 sm:shrink-0">
         <div className="aspect-video w-full bg-ink-3 sm:aspect-[3/4]">
           {photo ? (
