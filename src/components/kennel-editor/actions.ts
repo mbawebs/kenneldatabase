@@ -1,0 +1,371 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, getKennelMembership, isAdmin as checkIsAdmin } from "@/lib/supabase/auth";
+import { KENNEL_PLANS, type DogCategory, type KennelPlan } from "@/lib/supabase/types";
+
+const DOG_CATEGORIES: DogCategory[] = [
+  "stud",
+  "female",
+  "available",
+  "production",
+  "puppy",
+];
+
+// Autoriza a: super-admins (cualquier kennel) o miembros de ESE kennel
+// especifico. El kennel_id puede venir de un campo oculto del
+// formulario (por ejemplo cuando un admin edita el kennel de otro),
+// pero nunca se usa "a ciegas": esta funcion siempre re-verifica la
+// sesion real antes de dejar pasar la operacion. Tambien devuelve si
+// el acceso fue por ser admin, para que las acciones puedan decidir
+// si aplican cambios reservados a admins (como el plan).
+async function requireKennelAccess(
+  kennelId: string
+): Promise<{ isAdmin: boolean }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  if (await checkIsAdmin(user.id)) {
+    return { isAdmin: true };
+  }
+
+  const membership = await getKennelMembership(user.id);
+  if (!membership || membership.kennel_id !== kennelId) {
+    redirect("/login");
+  }
+
+  return { isAdmin: false };
+}
+
+function optionalField(formData: FormData, key: string) {
+  const value = String(formData.get(key) ?? "").trim();
+  return value === "" ? null : value;
+}
+
+export interface UpdateKennelState {
+  error: string | null;
+  success?: boolean;
+}
+
+export async function updateKennel(
+  _prevState: UpdateKennelState,
+  formData: FormData
+): Promise<UpdateKennelState> {
+  const kennelId = String(formData.get("kennel_id") ?? "");
+  if (!kennelId) {
+    return { error: "Missing kennel id." };
+  }
+  const { isAdmin } = await requireKennelAccess(kennelId);
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) {
+    return { error: "Name is required." };
+  }
+
+  const updates: Record<string, unknown> = {
+    name,
+    description: optionalField(formData, "description"),
+    country: optionalField(formData, "country"),
+    city: optionalField(formData, "city"),
+    phone: optionalField(formData, "phone"),
+    email: optionalField(formData, "email"),
+    whatsapp: optionalField(formData, "whatsapp"),
+    instagram: optionalField(formData, "instagram"),
+    facebook: optionalField(formData, "facebook"),
+    logo_url: optionalField(formData, "logo_url"),
+    cover_photo_url: optionalField(formData, "cover_photo_url"),
+  };
+
+  const accentColor = String(formData.get("accent_color") ?? "").trim();
+  if (accentColor) {
+    if (!/^#[0-9a-f]{6}$/i.test(accentColor)) {
+      return { error: "Invalid accent color." };
+    }
+    updates.accent_color = accentColor;
+  }
+
+  // El campo "plan" solo existe en el formulario cuando lo renderiza
+  // un admin (ver KennelInfoForm), pero por si alguien lo agregara a
+  // mano al HTML, igual lo ignoramos aqui a menos que quien llama
+  // realmente sea admin.
+  if (isAdmin) {
+    const plan = String(formData.get("plan") ?? "").trim();
+    if (plan) {
+      if (!KENNEL_PLANS.includes(plan as KennelPlan)) {
+        return { error: "Invalid plan." };
+      }
+      updates.plan = plan;
+    }
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("kennels")
+    .update(updates)
+    .eq("id", kennelId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/admin/kennels/${kennelId}`);
+  revalidatePath("/[slug]", "page");
+  return { error: null, success: true };
+}
+
+export interface DogFormState {
+  error: string | null;
+  success?: boolean;
+}
+
+function parseDogForm(
+  formData: FormData
+): { error: string } | { data: Record<string, unknown> } {
+  const name = String(formData.get("name") ?? "").trim();
+  const category = String(formData.get("category") ?? "");
+
+  if (!name) {
+    return { error: "Name is required." };
+  }
+  if (!DOG_CATEGORIES.includes(category as DogCategory)) {
+    return { error: "Invalid category." };
+  }
+
+  // MultiImageUploadField manda una fila <input type="hidden" name="photos">
+  // por cada foto subida, por eso usamos getAll en vez de get.
+  const photos = formData
+    .getAll("photos")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  return {
+    data: {
+      name,
+      category,
+      breed: optionalField(formData, "breed"),
+      color: optionalField(formData, "color"),
+      date_of_birth: optionalField(formData, "date_of_birth"),
+      price: optionalField(formData, "price"),
+      description: optionalField(formData, "description"),
+      pedigree_url: optionalField(formData, "pedigree_url"),
+      photos: photos.length > 0 ? photos : null,
+    },
+  };
+}
+
+export async function createDog(
+  _prevState: DogFormState,
+  formData: FormData
+): Promise<DogFormState> {
+  const kennelId = String(formData.get("kennel_id") ?? "");
+  if (!kennelId) {
+    return { error: "Missing kennel id." };
+  }
+  await requireKennelAccess(kennelId);
+
+  const parsed = parseDogForm(formData);
+  if ("error" in parsed) {
+    return { error: parsed.error };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("dogs")
+    .insert({ ...parsed.data, kennel_id: kennelId });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/admin/kennels/${kennelId}`);
+  revalidatePath("/[slug]", "page");
+  return { error: null, success: true };
+}
+
+export async function updateDog(
+  _prevState: DogFormState,
+  formData: FormData
+): Promise<DogFormState> {
+  const dogId = String(formData.get("dog_id") ?? "");
+  if (!dogId) {
+    return { error: "Missing dog id." };
+  }
+
+  // El kennel_id del perro se lee de la base de datos, no del
+  // formulario: asi evitamos depender de un campo que el navegador
+  // podria manipular.
+  const supabase = await createClient();
+  const { data: existingDog } = await supabase
+    .from("dogs")
+    .select("kennel_id")
+    .eq("id", dogId)
+    .maybeSingle();
+
+  if (!existingDog) {
+    return { error: "Dog not found." };
+  }
+
+  await requireKennelAccess(existingDog.kennel_id);
+
+  const parsed = parseDogForm(formData);
+  if ("error" in parsed) {
+    return { error: parsed.error };
+  }
+
+  const { error } = await supabase
+    .from("dogs")
+    .update(parsed.data)
+    .eq("id", dogId)
+    .eq("kennel_id", existingDog.kennel_id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/admin/kennels/${existingDog.kennel_id}`);
+  revalidatePath("/[slug]", "page");
+  return { error: null, success: true };
+}
+
+export async function deleteDog(formData: FormData) {
+  const dogId = String(formData.get("dog_id") ?? "");
+  if (!dogId) return;
+
+  const supabase = await createClient();
+  const { data: existingDog } = await supabase
+    .from("dogs")
+    .select("kennel_id")
+    .eq("id", dogId)
+    .maybeSingle();
+
+  if (!existingDog) return;
+
+  await requireKennelAccess(existingDog.kennel_id);
+
+  await supabase
+    .from("dogs")
+    .delete()
+    .eq("id", dogId)
+    .eq("kennel_id", existingDog.kennel_id);
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/admin/kennels/${existingDog.kennel_id}`);
+  revalidatePath("/[slug]", "page");
+}
+
+export interface BreedingFormState {
+  error: string | null;
+  success?: boolean;
+}
+
+function parseBreedingForm(formData: FormData): Record<string, unknown> {
+  const photos = formData
+    .getAll("photos")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  return {
+    title: optionalField(formData, "title"),
+    sire_name: optionalField(formData, "sire_name"),
+    dam_name: optionalField(formData, "dam_name"),
+    date: optionalField(formData, "date"),
+    description: optionalField(formData, "description"),
+    photos: photos.length > 0 ? photos : null,
+  };
+}
+
+export async function createBreeding(
+  _prevState: BreedingFormState,
+  formData: FormData
+): Promise<BreedingFormState> {
+  const kennelId = String(formData.get("kennel_id") ?? "");
+  if (!kennelId) {
+    return { error: "Missing kennel id." };
+  }
+  await requireKennelAccess(kennelId);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("breedings")
+    .insert({ ...parseBreedingForm(formData), kennel_id: kennelId });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/admin/kennels/${kennelId}`);
+  revalidatePath("/[slug]", "page");
+  return { error: null, success: true };
+}
+
+export async function updateBreeding(
+  _prevState: BreedingFormState,
+  formData: FormData
+): Promise<BreedingFormState> {
+  const breedingId = String(formData.get("breeding_id") ?? "");
+  if (!breedingId) {
+    return { error: "Missing breeding id." };
+  }
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("breedings")
+    .select("kennel_id")
+    .eq("id", breedingId)
+    .maybeSingle();
+
+  if (!existing) {
+    return { error: "Breeding not found." };
+  }
+
+  await requireKennelAccess(existing.kennel_id);
+
+  const { error } = await supabase
+    .from("breedings")
+    .update(parseBreedingForm(formData))
+    .eq("id", breedingId)
+    .eq("kennel_id", existing.kennel_id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/admin/kennels/${existing.kennel_id}`);
+  revalidatePath("/[slug]", "page");
+  return { error: null, success: true };
+}
+
+export async function deleteBreeding(formData: FormData) {
+  const breedingId = String(formData.get("breeding_id") ?? "");
+  if (!breedingId) return;
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("breedings")
+    .select("kennel_id")
+    .eq("id", breedingId)
+    .maybeSingle();
+
+  if (!existing) return;
+
+  await requireKennelAccess(existing.kennel_id);
+
+  await supabase
+    .from("breedings")
+    .delete()
+    .eq("id", breedingId)
+    .eq("kennel_id", existing.kennel_id);
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/admin/kennels/${existing.kennel_id}`);
+  revalidatePath("/[slug]", "page");
+}

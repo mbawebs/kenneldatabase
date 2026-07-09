@@ -1,0 +1,543 @@
+"use client";
+
+import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import KennelInfoForm from "./KennelInfoForm";
+import DogForm from "./DogForm";
+import BreedingForm from "./BreedingForm";
+import { deleteDog, deleteBreeding } from "./actions";
+import type { Kennel, Dog, Breeding, DogCategory } from "@/lib/supabase/types";
+import {
+  HomeIcon,
+  StarIcon,
+  HeartIcon,
+  FolderIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  EyeIcon,
+  ArrowLeftIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  XIcon,
+} from "./icons";
+
+type IconComponent = (props: { className?: string }) => React.JSX.Element;
+
+const DOG_SECTIONS: {
+  key: string;
+  label: string;
+  categories: DogCategory[];
+  icon: IconComponent;
+  emptyHint: string;
+}[] = [
+  {
+    key: "studs",
+    label: "Studs",
+    categories: ["stud"],
+    icon: StarIcon,
+    emptyHint: "Add your first stud",
+  },
+  {
+    key: "females",
+    label: "Females",
+    categories: ["female"],
+    icon: HeartIcon,
+    emptyHint: "Add your first female",
+  },
+  {
+    key: "productions",
+    label: "Productions",
+    categories: ["production", "puppy"],
+    icon: FolderIcon,
+    emptyHint: "Add a production dog or puppy",
+  },
+  {
+    key: "available",
+    label: "Available",
+    categories: ["available"],
+    icon: CheckCircleIcon,
+    emptyHint: "Add a dog that's available",
+  },
+];
+
+type View =
+  | { screen: "menu" }
+  | { screen: "info" }
+  | { screen: "section"; sectionKey: string }
+  | { screen: "dog-edit"; sectionKey: string; dogId: string | null }
+  | { screen: "breedings" }
+  | { screen: "breeding-edit"; breedingId: string | null };
+
+export default function DashboardApp({
+  kennel,
+  dogs,
+  breedings,
+  isAdmin = false,
+  backLink,
+  onSignOut,
+}: {
+  kennel: Kennel;
+  dogs: Dog[];
+  breedings: Breeding[];
+  isAdmin?: boolean;
+  // Solo se pasa desde /admin/kennels/[id]: reemplaza el boton de
+  // "Log out" por un link de regreso al panel de admin.
+  backLink?: { href: string; label: string };
+  // Solo se pasa desde /dashboard.
+  onSignOut?: () => void | Promise<void>;
+}) {
+  const [view, setView] = useState<View>({ screen: "menu" });
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const publicHref = `/${kennel.slug}`;
+  const desktopPreviewRef = useRef<HTMLIFrameElement>(null);
+  const mobilePreviewRef = useRef<HTMLIFrameElement>(null);
+
+  // La vista se remonta cuando cambian los datos (despues de guardar
+  // algo), asi el iframe de "Vista previa" siempre refleja lo ultimo
+  // guardado sin que el usuario tenga que refrescar a mano.
+  const dataFingerprint = useMemo(
+    () => JSON.stringify({ kennel, dogs, breedings }),
+    [kennel, dogs, breedings]
+  );
+
+  // Vista previa instantanea del color de acento: como el iframe es
+  // el mismo origen (misma app), podemos alcanzar su DOM directo y
+  // sobreescribir la variable CSS sin esperar a Guardar ni recargar.
+  function previewAccentColor(color: string) {
+    for (const ref of [desktopPreviewRef, mobilePreviewRef]) {
+      const main = ref.current?.contentDocument?.querySelector("main");
+      main?.style.setProperty("--color-accent", color);
+    }
+  }
+
+  function goMenu() {
+    setView({ screen: "menu" });
+  }
+
+  let title: string | null = null;
+  let onBack: (() => void) | null = null;
+  let content: React.ReactNode;
+
+  if (view.screen === "menu") {
+    content = (
+      <MenuScreen dogs={dogs} breedings={breedings} onNavigate={setView} />
+    );
+  } else if (view.screen === "info") {
+    title = "Kennel info";
+    onBack = goMenu;
+    content = (
+      <KennelInfoForm
+        kennel={kennel}
+        isAdmin={isAdmin}
+        onAccentColorPreview={previewAccentColor}
+      />
+    );
+  } else if (view.screen === "section") {
+    const section = DOG_SECTIONS.find((s) => s.key === view.sectionKey);
+    if (section) {
+      title = section.label;
+      onBack = goMenu;
+      const items = dogs.filter((d) => section.categories.includes(d.category));
+      content = (
+        <SectionListScreen
+          items={items}
+          emptyHint={section.emptyHint}
+          onAdd={() =>
+            setView({ screen: "dog-edit", sectionKey: section.key, dogId: null })
+          }
+          onEdit={(id) =>
+            setView({ screen: "dog-edit", sectionKey: section.key, dogId: id })
+          }
+        />
+      );
+    }
+  } else if (view.screen === "dog-edit") {
+    const section = DOG_SECTIONS.find((s) => s.key === view.sectionKey);
+    if (section) {
+      const dog = view.dogId ? dogs.find((d) => d.id === view.dogId) : undefined;
+      title = dog ? `Edit ${dog.name}` : `Add to ${section.label}`;
+      const backToSection = () =>
+        setView({ screen: "section", sectionKey: section.key });
+      onBack = backToSection;
+      content = (
+        <DogForm
+          dog={dog}
+          kennelId={kennel.id}
+          categories={section.categories}
+          onDone={backToSection}
+          onCancel={backToSection}
+        />
+      );
+    }
+  } else if (view.screen === "breedings") {
+    title = "Breedings";
+    onBack = goMenu;
+    content = (
+      <BreedingsListScreen
+        items={breedings}
+        onAdd={() => setView({ screen: "breeding-edit", breedingId: null })}
+        onEdit={(id) => setView({ screen: "breeding-edit", breedingId: id })}
+      />
+    );
+  } else if (view.screen === "breeding-edit") {
+    const breeding = view.breedingId
+      ? breedings.find((b) => b.id === view.breedingId)
+      : undefined;
+    title = breeding ? `Edit ${breeding.title ?? "breeding"}` : "Add a breeding";
+    const backToList = () => setView({ screen: "breedings" });
+    onBack = backToList;
+    content = (
+      <BreedingForm
+        breeding={breeding}
+        kennelId={kennel.id}
+        onDone={backToList}
+        onCancel={backToList}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-paper text-onlight dark:bg-ink dark:text-ink-text">
+      <div className="mx-auto flex max-w-6xl">
+        <div className="min-h-screen flex-1 p-4 pb-10 sm:p-6 md:max-w-xl">
+          <TopBar
+            kennel={kennel}
+            title={title}
+            onBack={onBack}
+            backLink={view.screen === "menu" ? backLink : undefined}
+            onSignOut={view.screen === "menu" ? onSignOut : undefined}
+            onOpenPreview={() => setPreviewOpen(true)}
+          />
+          {content}
+        </div>
+
+        {/* Escritorio: panel de vista previa siempre visible, lado a lado. */}
+        <div className="hidden w-[380px] shrink-0 border-l border-saddle/15 dark:border-brass/15 md:block">
+          <div className="sticky top-0 h-screen p-4">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-saddle dark:text-brass">
+              Your public page
+            </p>
+            <iframe
+              key={dataFingerprint}
+              ref={desktopPreviewRef}
+              src={publicHref}
+              title="Public page preview"
+              className="h-[calc(100%-28px)] w-full rounded-xl border border-saddle/15 dark:border-brass/15"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Movil: toggle de pantalla completa, no panel lado a lado. */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-paper dark:bg-ink md:hidden">
+          <div className="flex items-center justify-between border-b border-saddle/15 p-4 dark:border-brass/15">
+            <span className="font-semibold">Your public page</span>
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(false)}
+              aria-label="Close preview"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-saddle/25 dark:border-brass/25"
+            >
+              <XIcon />
+            </button>
+          </div>
+          <iframe
+            key={dataFingerprint}
+            ref={mobilePreviewRef}
+            src={publicHref}
+            title="Public page preview"
+            className="flex-1"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TopBar({
+  kennel,
+  title,
+  onBack,
+  backLink,
+  onSignOut,
+  onOpenPreview,
+}: {
+  kennel: Kennel;
+  title: string | null;
+  onBack: (() => void) | null;
+  backLink?: { href: string; label: string };
+  onSignOut?: () => void | Promise<void>;
+  onOpenPreview: () => void;
+}) {
+  return (
+    <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-saddle/25 dark:border-brass/25"
+          >
+            <ArrowLeftIcon />
+          </button>
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-xs font-bold uppercase tracking-wide text-saddle dark:text-brass">
+            {title ? kennel.name : "Dashboard"}
+          </p>
+          <h1 className="truncate text-xl font-bold">{title ?? kennel.name}</h1>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpenPreview}
+          aria-label="View my page"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-saddle/25 text-onlight dark:border-brass/25 dark:text-ink-text md:hidden"
+        >
+          <EyeIcon />
+        </button>
+        {backLink && (
+          <Link
+            href={backLink.href}
+            className="rounded-full border border-saddle/25 px-3 py-2 text-xs font-bold uppercase tracking-wide dark:border-brass/25"
+          >
+            {backLink.label}
+          </Link>
+        )}
+        {onSignOut && (
+          <form action={onSignOut}>
+            <button
+              type="submit"
+              className="rounded-full border border-saddle/25 px-3 py-2 text-xs font-bold uppercase tracking-wide dark:border-brass/25"
+            >
+              Log out
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MenuScreen({
+  dogs,
+  breedings,
+  onNavigate,
+}: {
+  dogs: Dog[];
+  breedings: Breeding[];
+  onNavigate: (view: View) => void;
+}) {
+  const cards: {
+    key: string;
+    label: string;
+    icon: IconComponent;
+    meta: string;
+    onClick: () => void;
+  }[] = [
+    {
+      key: "info",
+      label: "Kennel info",
+      icon: HomeIcon,
+      meta: "Photos, contact, brand color",
+      onClick: () => onNavigate({ screen: "info" }),
+    },
+    ...DOG_SECTIONS.map((section) => {
+      const count = dogs.filter((d) => section.categories.includes(d.category)).length;
+      return {
+        key: section.key,
+        label: section.label,
+        icon: section.icon,
+        meta: count > 0 ? `${count} dog${count === 1 ? "" : "s"}` : section.emptyHint,
+        onClick: () => onNavigate({ screen: "section", sectionKey: section.key }),
+      };
+    }),
+    {
+      key: "breedings",
+      label: "Breedings",
+      icon: CalendarIcon,
+      meta:
+        breedings.length > 0
+          ? `${breedings.length} breeding${breedings.length === 1 ? "" : "s"}`
+          : "Add your first breeding",
+      onClick: () => onNavigate({ screen: "breedings" }),
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {cards.map((card) => (
+        <button
+          key={card.key}
+          type="button"
+          onClick={card.onClick}
+          className="flex flex-col items-start gap-2.5 rounded-2xl border border-saddle/20 bg-white p-4 text-left transition-colors hover:border-saddle/40 dark:border-brass/20 dark:bg-ink-2 dark:hover:border-brass/40"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-saddle/10 text-saddle dark:bg-brass/10 dark:text-brass">
+            <card.icon className="h-5 w-5" />
+          </span>
+          <span className="font-semibold leading-tight">{card.label}</span>
+          <span className="text-xs leading-tight text-onlight-dim dark:text-ink-text-dim">
+            {card.meta}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SectionListScreen({
+  items,
+  emptyHint,
+  onAdd,
+  onEdit,
+}: {
+  items: Dog[];
+  emptyHint: string;
+  onAdd: () => void;
+  onEdit: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-3 pb-24">
+      {items.map((dog) => (
+        <ItemRow
+          key={dog.id}
+          photo={dog.photos?.[0]}
+          title={dog.name}
+          subtitle={[dog.breed, dog.color].filter(Boolean).join(" · ")}
+          onEdit={() => onEdit(dog.id)}
+          deleteAction={deleteDog}
+          deleteFieldName="dog_id"
+          deleteFieldValue={dog.id}
+          confirmMessage={`Delete ${dog.name}? This can't be undone.`}
+        />
+      ))}
+
+      {items.length === 0 && (
+        <p className="text-sm text-onlight-dim dark:text-ink-text-dim">
+          {emptyHint}.
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={onAdd}
+        className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-saddle/30 py-3.5 text-sm font-bold uppercase tracking-wide text-onlight dark:border-brass/30 dark:text-ink-text"
+      >
+        <PlusIcon className="h-4 w-4" />
+        Add
+      </button>
+    </div>
+  );
+}
+
+function BreedingsListScreen({
+  items,
+  onAdd,
+  onEdit,
+}: {
+  items: Breeding[];
+  onAdd: () => void;
+  onEdit: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-3 pb-24">
+      {items.map((breeding) => (
+        <ItemRow
+          key={breeding.id}
+          photo={breeding.photos?.[0]}
+          title={breeding.title ?? "Untitled breeding"}
+          subtitle={[breeding.sire_name, breeding.dam_name].filter(Boolean).join(" x ")}
+          onEdit={() => onEdit(breeding.id)}
+          deleteAction={deleteBreeding}
+          deleteFieldName="breeding_id"
+          deleteFieldValue={breeding.id}
+          confirmMessage="Delete this breeding? This can't be undone."
+        />
+      ))}
+
+      {items.length === 0 && (
+        <p className="text-sm text-onlight-dim dark:text-ink-text-dim">
+          Add your first breeding.
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={onAdd}
+        className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-saddle/30 py-3.5 text-sm font-bold uppercase tracking-wide text-onlight dark:border-brass/30 dark:text-ink-text"
+      >
+        <PlusIcon className="h-4 w-4" />
+        Add
+      </button>
+    </div>
+  );
+}
+
+function ItemRow({
+  photo,
+  title,
+  subtitle,
+  onEdit,
+  deleteAction,
+  deleteFieldName,
+  deleteFieldValue,
+  confirmMessage,
+}: {
+  photo?: string;
+  title: string;
+  subtitle: string;
+  onEdit: () => void;
+  deleteAction: (formData: FormData) => void | Promise<void>;
+  deleteFieldName: string;
+  deleteFieldValue: string;
+  confirmMessage: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-saddle/20 bg-white p-3 dark:border-brass/20 dark:bg-ink-2">
+      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-parchment dark:bg-ink-3">
+        {photo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photo} alt="" className="h-full w-full object-cover" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold">{title}</p>
+        {subtitle && (
+          <p className="truncate text-xs text-onlight-dim dark:text-ink-text-dim">
+            {subtitle}
+          </p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label={`Edit ${title}`}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-saddle/25 text-onlight dark:border-brass/25 dark:text-ink-text"
+      >
+        <PencilIcon className="h-4 w-4" />
+      </button>
+      <form
+        action={deleteAction}
+        onSubmit={(e) => {
+          if (!confirm(confirmMessage)) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <input type="hidden" name={deleteFieldName} value={deleteFieldValue} />
+        <button
+          type="submit"
+          aria-label={`Delete ${title}`}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-oxblood/30 text-oxblood dark:border-oxblood-2/50 dark:text-oxblood-2"
+        >
+          <TrashIcon className="h-4 w-4" />
+        </button>
+      </form>
+    </div>
+  );
+}
