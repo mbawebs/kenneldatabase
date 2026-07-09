@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import LightboxProvider from "@/components/lightbox/LightboxProvider";
 import ClickableImage from "@/components/lightbox/ClickableImage";
@@ -28,6 +28,8 @@ export default function KennelLandingView({
   dogs: Dog[];
   breedings: Breeding[];
 }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const studs = dogs.filter((d) => d.category === "stud");
   const females = dogs.filter((d) => d.category === "female");
   const productions = dogs.filter(
@@ -162,8 +164,51 @@ export default function KennelLandingView({
               >
                 Owner Login
               </Link>
+              {navLinks.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen((open) => !open)}
+                  aria-expanded={mobileMenuOpen}
+                  aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink-text-dim/40 text-ink-text-dim transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] md:hidden"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4.5 w-4.5"
+                  >
+                    {mobileMenuOpen ? (
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    ) : (
+                      <path d="M4 7h16M4 12h16M4 17h16" />
+                    )}
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Menu hamburguesa: solo en movil, donde no cabe la nav
+              horizontal completa. En escritorio la nav de arriba ya
+              muestra todos los links, asi que este panel no aplica. */}
+          {mobileMenuOpen && navLinks.length > 0 && (
+            <nav className="border-t border-ink-3 px-6 py-2 md:hidden">
+              {navLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block border-b border-ink-3/60 py-3 font-body text-xs font-bold uppercase tracking-widest text-ink-text-dim transition-colors last:border-0 hover:text-[var(--color-accent)]"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+          )}
         </header>
 
         {/* Hero: cinematica, a pantalla completa. Overlay minimo (solo
