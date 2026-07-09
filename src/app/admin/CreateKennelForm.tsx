@@ -24,6 +24,8 @@ export default function CreateKennelForm() {
   // en la carpeta de Storage donde se sube el logo/portada como en el
   // "id" que finalmente recibe el kennel al crearse.
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
   useEffect(() => {
     setPendingId(crypto.randomUUID());
   }, []);
@@ -35,6 +37,8 @@ export default function CreateKennelForm() {
       // "key" de los campos de imagen, React los vuelve a montar
       // desde cero (sin esto, seguirían mostrando el logo ya subido).
       setPendingId(crypto.randomUUID());
+      setLogoUrl("");
+      setCoverUrl("");
     }
   }, [state.success]);
 
@@ -93,6 +97,8 @@ export default function CreateKennelForm() {
               label="Logo"
               kennelId={pendingId}
               folder="logo"
+              value={logoUrl}
+              onChange={setLogoUrl}
             />
             <ImageUploadField
               key={`${pendingId}-cover`}
@@ -100,6 +106,8 @@ export default function CreateKennelForm() {
               label="Cover photo"
               kennelId={pendingId}
               folder="cover"
+              value={coverUrl}
+              onChange={setCoverUrl}
             />
           </>
         ) : (
@@ -125,18 +133,12 @@ export default function CreateKennelForm() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <label htmlFor="phone" className={labelClass}>
             Phone
           </label>
           <input id="phone" name="phone" className={inputClass} />
-        </div>
-        <div className="space-y-1">
-          <label htmlFor="whatsapp" className={labelClass}>
-            WhatsApp
-          </label>
-          <input id="whatsapp" name="whatsapp" className={inputClass} />
         </div>
         <div className="space-y-1">
           <label htmlFor="email" className={labelClass}>
@@ -151,20 +153,10 @@ export default function CreateKennelForm() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1">
-          <label htmlFor="instagram" className={labelClass}>
-            Instagram (username or URL)
-          </label>
-          <input id="instagram" name="instagram" className={inputClass} />
-        </div>
-        <div className="space-y-1">
-          <label htmlFor="facebook" className={labelClass}>
-            Facebook (username or URL)
-          </label>
-          <input id="facebook" name="facebook" className={inputClass} />
-        </div>
-      </div>
+      <p className="text-xs text-onlight-dim dark:text-ink-text-dim">
+        WhatsApp, Instagram, Facebook, and other social links can be added
+        later from Manage → Kennel info.
+      </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">

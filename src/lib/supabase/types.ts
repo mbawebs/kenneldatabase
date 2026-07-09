@@ -9,6 +9,34 @@ export type KennelPlan = "demo" | "dashboard" | "multipage";
 
 export const KENNEL_PLANS: KennelPlan[] = ["demo", "dashboard", "multipage"];
 
+export type SocialPlatform =
+  | "whatsapp"
+  | "instagram"
+  | "facebook"
+  | "tiktok"
+  | "youtube"
+  | "x"
+  | "website";
+
+export interface SocialLink {
+  platform: SocialPlatform;
+  value: string;
+}
+
+export const SOCIAL_PLATFORMS: {
+  value: SocialPlatform;
+  label: string;
+  placeholder: string;
+}[] = [
+  { value: "whatsapp", label: "WhatsApp", placeholder: "+1 555 123 4567" },
+  { value: "instagram", label: "Instagram", placeholder: "@yourkennel" },
+  { value: "facebook", label: "Facebook", placeholder: "Page username or link" },
+  { value: "tiktok", label: "TikTok", placeholder: "@yourkennel" },
+  { value: "youtube", label: "YouTube", placeholder: "Channel link" },
+  { value: "x", label: "X (Twitter)", placeholder: "@yourkennel" },
+  { value: "website", label: "Website", placeholder: "https://yourkennel.com" },
+];
+
 export interface Kennel {
   id: string;
   name: string;
@@ -20,9 +48,7 @@ export interface Kennel {
   city: string | null;
   phone: string | null;
   email: string | null;
-  whatsapp: string | null;
-  instagram: string | null;
-  facebook: string | null;
+  social_links: SocialLink[];
   status: string;
   plan: KennelPlan;
   accent_color: string;

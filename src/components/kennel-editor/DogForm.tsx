@@ -26,6 +26,7 @@ export default function DogForm({
   categories,
   onDone,
   onCancel,
+  onDraftChange,
 }: {
   dog?: Dog;
   kennelId: string;
@@ -36,14 +37,43 @@ export default function DogForm({
   categories: DogCategory[];
   onDone: () => void;
   onCancel: () => void;
+  // Se llama en cada cambio (antes de guardar) para que el panel de
+  // "Vista previa" refleje esta ficha al instante, ya sea nueva o
+  // existente.
+  onDraftChange?: (draft: Dog) => void;
 }) {
   const action = dog ? updateDog : createDog;
   const [state, formAction, isPending] = useActionState(action, initialState);
   const uid = useId();
   const fieldId = (name: string) => `${uid}-${name}`;
-  const [category, setCategory] = useState<DogCategory>(
-    dog?.category ?? categories[0]
+  // Un perro nuevo todavia no tiene id real: se le da uno temporal
+  // solo para que la vista previa pueda identificarlo en la lista
+  // mientras se edita. El servidor genera el id de verdad al guardar.
+  const [tempId] = useState(() => dog?.id ?? crypto.randomUUID());
+  const [draft, setDraft] = useState<Dog>(
+    dog ?? {
+      id: tempId,
+      kennel_id: kennelId,
+      name: "",
+      category: categories[0],
+      breed: null,
+      color: null,
+      date_of_birth: null,
+      price: null,
+      description: null,
+      pedigree_url: null,
+      photos: null,
+      status: "active",
+      display_order: 0,
+      created_at: new Date().toISOString(),
+    }
   );
+
+  function update<K extends keyof Dog>(field: K, value: Dog[K]) {
+    const next = { ...draft, [field]: value };
+    setDraft(next);
+    onDraftChange?.(next);
+  }
 
   useEffect(() => {
     if (state.success) {
@@ -54,7 +84,7 @@ export default function DogForm({
   return (
     <form action={formAction} className="space-y-6 pb-28">
       <input type="hidden" name="kennel_id" value={kennelId} />
-      <input type="hidden" name="category" value={category} />
+      <input type="hidden" name="category" value={draft.category} />
       {dog && <input type="hidden" name="dog_id" value={dog.id} />}
 
       {state.error && (
@@ -71,10 +101,10 @@ export default function DogForm({
               <button
                 key={value}
                 type="button"
-                onClick={() => setCategory(value)}
-                aria-pressed={category === value}
+                onClick={() => update("category", value)}
+                aria-pressed={draft.category === value}
                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-                  category === value
+                  draft.category === value
                     ? "border-saddle bg-saddle text-paper dark:border-brass dark:bg-brass dark:text-ink"
                     : "border-saddle/25 text-onlight dark:border-brass/25 dark:text-ink-text"
                 }`}
@@ -94,7 +124,8 @@ export default function DogForm({
           id={fieldId("name")}
           name="name"
           required
-          defaultValue={dog?.name}
+          value={draft.name}
+          onChange={(e) => update("name", e.target.value)}
           className={inputClass}
         />
       </div>
@@ -107,7 +138,8 @@ export default function DogForm({
           <input
             id={fieldId("breed")}
             name="breed"
-            defaultValue={dog?.breed ?? ""}
+            value={draft.breed ?? ""}
+            onChange={(e) => update("breed", e.target.value)}
             className={inputClass}
           />
         </div>
@@ -118,7 +150,8 @@ export default function DogForm({
           <input
             id={fieldId("color")}
             name="color"
-            defaultValue={dog?.color ?? ""}
+            value={draft.color ?? ""}
+            onChange={(e) => update("color", e.target.value)}
             className={inputClass}
           />
         </div>
@@ -133,7 +166,8 @@ export default function DogForm({
             id={fieldId("date_of_birth")}
             name="date_of_birth"
             type="date"
-            defaultValue={dog?.date_of_birth ?? ""}
+            value={draft.date_of_birth ?? ""}
+            onChange={(e) => update("date_of_birth", e.target.value)}
             className={inputClass}
           />
         </div>
@@ -145,7 +179,8 @@ export default function DogForm({
             id={fieldId("price")}
             name="price"
             placeholder="$2,500 USD"
-            defaultValue={dog?.price ?? ""}
+            value={draft.price ?? ""}
+            onChange={(e) => update("price", e.target.value)}
             className={inputClass}
           />
         </div>
@@ -160,7 +195,8 @@ export default function DogForm({
           name="description"
           rows={4}
           placeholder="Temperament, structure, bloodline, achievements..."
-          defaultValue={dog?.description ?? ""}
+          value={draft.description ?? ""}
+          onChange={(e) => update("description", e.target.value)}
           className={inputClass}
         />
       </div>
@@ -173,7 +209,8 @@ export default function DogForm({
           id={fieldId("pedigree_url")}
           name="pedigree_url"
           placeholder="Link to a PDF or photo of the pedigree"
-          defaultValue={dog?.pedigree_url ?? ""}
+          value={draft.pedigree_url ?? ""}
+          onChange={(e) => update("pedigree_url", e.target.value)}
           className={inputClass}
         />
       </div>
@@ -183,7 +220,8 @@ export default function DogForm({
         label="Photos"
         kennelId={kennelId}
         folder="dogs"
-        defaultValue={dog?.photos}
+        value={draft.photos ?? []}
+        onChange={(photos) => update("photos", photos)}
       />
 
       <div className="fixed inset-x-0 bottom-0 z-20 flex gap-3 border-t border-saddle/15 bg-white/95 p-4 backdrop-blur dark:border-brass/15 dark:bg-ink-2/95 sm:sticky sm:bottom-0 sm:mt-2 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">

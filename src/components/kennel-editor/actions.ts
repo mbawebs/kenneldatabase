@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getKennelMembership, isAdmin as checkIsAdmin } from "@/lib/supabase/auth";
-import { KENNEL_PLANS, type DogCategory, type KennelPlan } from "@/lib/supabase/types";
+import {
+  KENNEL_PLANS,
+  SOCIAL_PLATFORMS,
+  type DogCategory,
+  type KennelPlan,
+  type SocialLink,
+} from "@/lib/supabase/types";
 
 const DOG_CATEGORIES: DogCategory[] = [
   "stud",
@@ -66,6 +72,17 @@ export async function updateKennel(
     return { error: "Name is required." };
   }
 
+  const validPlatforms = SOCIAL_PLATFORMS.map((p) => p.value);
+  const platforms = formData.getAll("social_platform").map(String);
+  const values = formData.getAll("social_value").map(String);
+  const socialLinks: SocialLink[] = platforms
+    .map((platform, i) => ({ platform, value: values[i]?.trim() ?? "" }))
+    .filter(
+      (link): link is SocialLink =>
+        link.value !== "" &&
+        validPlatforms.includes(link.platform as SocialLink["platform"])
+    );
+
   const updates: Record<string, unknown> = {
     name,
     description: optionalField(formData, "description"),
@@ -73,11 +90,9 @@ export async function updateKennel(
     city: optionalField(formData, "city"),
     phone: optionalField(formData, "phone"),
     email: optionalField(formData, "email"),
-    whatsapp: optionalField(formData, "whatsapp"),
-    instagram: optionalField(formData, "instagram"),
-    facebook: optionalField(formData, "facebook"),
     logo_url: optionalField(formData, "logo_url"),
     cover_photo_url: optionalField(formData, "cover_photo_url"),
+    social_links: socialLinks,
   };
 
   const accentColor = String(formData.get("accent_color") ?? "").trim();

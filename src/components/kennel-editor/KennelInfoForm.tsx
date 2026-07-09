@@ -3,6 +3,7 @@
 import { useActionState, useId, useState } from "react";
 import { updateKennel, type UpdateKennelState } from "./actions";
 import ImageUploadField from "./ImageUploadField";
+import SocialLinksField from "./SocialLinksField";
 import {
   ACCENT_COLOR_PRESETS,
   KENNEL_PLANS,
@@ -21,16 +22,16 @@ const groupTitleClass =
 export default function KennelInfoForm({
   kennel,
   isAdmin = false,
-  onAccentColorPreview,
+  onDraftChange,
 }: {
   kennel: Kennel;
   // El campo Plan solo se muestra cuando esta vista la abre un
   // super-admin (ver /admin/kennels/[id]). En /dashboard este prop
   // no se pasa, asi que el cliente nunca lo ve.
   isAdmin?: boolean;
-  // Se llama en cada cambio de color (antes de guardar) para que el
-  // panel de "Vista previa" lo refleje al instante.
-  onAccentColorPreview?: (color: string) => void;
+  // Se llama en cada cambio de cualquier campo (antes de guardar) para
+  // que el panel de "Vista previa" lo refleje al instante.
+  onDraftChange?: (draft: Kennel) => void;
 }) {
   const [state, formAction, isPending] = useActionState(
     updateKennel,
@@ -38,13 +39,12 @@ export default function KennelInfoForm({
   );
   const uid = useId();
   const fieldId = (name: string) => `${uid}-${name}`;
-  const [accentColor, setAccentColor] = useState(
-    kennel.accent_color || "#d21f1f"
-  );
+  const [draft, setDraft] = useState<Kennel>(kennel);
 
-  function updateAccentColor(color: string) {
-    setAccentColor(color);
-    onAccentColorPreview?.(color);
+  function update<K extends keyof Kennel>(field: K, value: Kennel[K]) {
+    const next = { ...draft, [field]: value };
+    setDraft(next);
+    onDraftChange?.(next);
   }
 
   return (
@@ -72,7 +72,8 @@ export default function KennelInfoForm({
             id={fieldId("name")}
             name="name"
             required
-            defaultValue={kennel.name}
+            value={draft.name}
+            onChange={(e) => update("name", e.target.value)}
             className={inputClass}
           />
         </div>
@@ -85,7 +86,8 @@ export default function KennelInfoForm({
             name="description"
             rows={4}
             placeholder="A short introduction to your kennel, your bloodlines, your experience..."
-            defaultValue={kennel.description ?? ""}
+            value={draft.description ?? ""}
+            onChange={(e) => update("description", e.target.value)}
             className={inputClass}
           />
         </div>
@@ -101,7 +103,8 @@ export default function KennelInfoForm({
             kennelId={kennel.id}
             folder="logo"
             aspect="square"
-            defaultValue={kennel.logo_url}
+            value={draft.logo_url ?? ""}
+            onChange={(url) => update("logo_url", url || null)}
           />
           <div className="min-w-[240px] flex-1">
             <ImageUploadField
@@ -111,7 +114,8 @@ export default function KennelInfoForm({
               kennelId={kennel.id}
               folder="cover"
               aspect="wide"
-              defaultValue={kennel.cover_photo_url}
+              value={draft.cover_photo_url ?? ""}
+              onChange={(url) => update("cover_photo_url", url || null)}
             />
           </div>
         </div>
@@ -128,14 +132,14 @@ export default function KennelInfoForm({
             <button
               key={preset.value}
               type="button"
-              onClick={() => updateAccentColor(preset.value)}
+              onClick={() => update("accent_color", preset.value)}
               aria-label={preset.label}
-              aria-pressed={accentColor.toLowerCase() === preset.value}
+              aria-pressed={draft.accent_color.toLowerCase() === preset.value}
               className="h-10 w-10 rounded-full border-2 transition-transform hover:scale-110"
               style={{
                 backgroundColor: preset.value,
                 borderColor:
-                  accentColor.toLowerCase() === preset.value
+                  draft.accent_color.toLowerCase() === preset.value
                     ? "currentColor"
                     : "transparent",
               }}
@@ -143,13 +147,13 @@ export default function KennelInfoForm({
           ))}
           <input
             type="color"
-            value={accentColor}
-            onChange={(e) => updateAccentColor(e.target.value)}
+            value={draft.accent_color}
+            onChange={(e) => update("accent_color", e.target.value)}
             aria-label="Custom brand color"
             className="h-10 w-12 cursor-pointer rounded-lg border border-saddle/25 bg-transparent p-0 dark:border-brass/25"
           />
         </div>
-        <input type="hidden" name="accent_color" value={accentColor} />
+        <input type="hidden" name="accent_color" value={draft.accent_color} />
       </div>
 
       <div className="space-y-4">
@@ -162,7 +166,8 @@ export default function KennelInfoForm({
             <input
               id={fieldId("country")}
               name="country"
-              defaultValue={kennel.country ?? ""}
+              value={draft.country ?? ""}
+              onChange={(e) => update("country", e.target.value)}
               className={inputClass}
             />
           </div>
@@ -173,7 +178,8 @@ export default function KennelInfoForm({
             <input
               id={fieldId("city")}
               name="city"
-              defaultValue={kennel.city ?? ""}
+              value={draft.city ?? ""}
+              onChange={(e) => update("city", e.target.value)}
               className={inputClass}
             />
           </div>
@@ -181,76 +187,46 @@ export default function KennelInfoForm({
       </div>
 
       <div className="space-y-4">
-        <p className={groupTitleClass}>How can buyers reach you?</p>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor={fieldId("whatsapp")} className={labelClass}>
-              WhatsApp number
-            </label>
-            <input
-              id={fieldId("whatsapp")}
-              name="whatsapp"
-              placeholder="+52 81 1234 5678"
-              defaultValue={kennel.whatsapp ?? ""}
-              className={inputClass}
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label htmlFor={fieldId("phone")} className={labelClass}>
-                Phone number
-              </label>
-              <input
-                id={fieldId("phone")}
-                name="phone"
-                defaultValue={kennel.phone ?? ""}
-                className={inputClass}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor={fieldId("email")} className={labelClass}>
-                Email
-              </label>
-              <input
-                id={fieldId("email")}
-                name="email"
-                type="email"
-                defaultValue={kennel.email ?? ""}
-                className={inputClass}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <p className={groupTitleClass}>Social media</p>
+        <p className={groupTitleClass}>Direct contact</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <label htmlFor={fieldId("instagram")} className={labelClass}>
-              Instagram
+            <label htmlFor={fieldId("phone")} className={labelClass}>
+              Phone number
             </label>
             <input
-              id={fieldId("instagram")}
-              name="instagram"
-              placeholder="@yourkennel or paste the link"
-              defaultValue={kennel.instagram ?? ""}
+              id={fieldId("phone")}
+              name="phone"
+              value={draft.phone ?? ""}
+              onChange={(e) => update("phone", e.target.value)}
               className={inputClass}
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor={fieldId("facebook")} className={labelClass}>
-              Facebook
+            <label htmlFor={fieldId("email")} className={labelClass}>
+              Email
             </label>
             <input
-              id={fieldId("facebook")}
-              name="facebook"
-              placeholder="Page username or paste the link"
-              defaultValue={kennel.facebook ?? ""}
+              id={fieldId("email")}
+              name="email"
+              type="email"
+              value={draft.email ?? ""}
+              onChange={(e) => update("email", e.target.value)}
               className={inputClass}
             />
           </div>
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <p className={groupTitleClass}>Social &amp; links</p>
+        <p className="text-sm text-onlight-dim dark:text-ink-text-dim">
+          Add as many or as few as you use — WhatsApp, Instagram, Facebook,
+          TikTok, YouTube, X, or your own website.
+        </p>
+        <SocialLinksField
+          links={draft.social_links}
+          onChange={(links) => update("social_links", links)}
+        />
       </div>
 
       {isAdmin && (
@@ -263,7 +239,10 @@ export default function KennelInfoForm({
             <select
               id={fieldId("plan")}
               name="plan"
-              defaultValue={kennel.plan}
+              value={draft.plan}
+              onChange={(e) =>
+                update("plan", e.target.value as Kennel["plan"])
+              }
               className={inputClass}
             >
               {KENNEL_PLANS.map((plan) => (

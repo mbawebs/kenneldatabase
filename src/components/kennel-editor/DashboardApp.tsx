@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import KennelInfoForm from "./KennelInfoForm";
 import DogForm from "./DogForm";
@@ -97,29 +97,72 @@ export default function DashboardApp({
 }) {
   const [view, setView] = useState<View>({ screen: "menu" });
   const [previewOpen, setPreviewOpen] = useState(false);
-  const publicHref = `/${kennel.slug}`;
   const desktopPreviewRef = useRef<HTMLIFrameElement>(null);
   const mobilePreviewRef = useRef<HTMLIFrameElement>(null);
 
-  // La vista se remonta cuando cambian los datos (despues de guardar
-  // algo), asi el iframe de "Vista previa" siempre refleja lo ultimo
-  // guardado sin que el usuario tenga que refrescar a mano.
-  const dataFingerprint = useMemo(
-    () => JSON.stringify({ kennel, dogs, breedings }),
-    [kennel, dogs, breedings]
-  );
+  // Borradores: mientras se edita algo (todavia sin guardar), el panel
+  // de "Vista previa" debe reflejarlo al instante. Cada uno se limpia
+  // al salir de su pantalla (o al guardar, que navega de vuelta).
+  const [draftKennel, setDraftKennel] = useState<Kennel | null>(null);
+  const [draftDog, setDraftDog] = useState<Dog | null>(null);
+  const [draftBreeding, setDraftBreeding] = useState<Breeding | null>(null);
 
-  // Vista previa instantanea del color de acento: como el iframe es
-  // el mismo origen (misma app), podemos alcanzar su DOM directo y
-  // sobreescribir la variable CSS sin esperar a Guardar ni recargar.
-  function previewAccentColor(color: string) {
-    for (const ref of [desktopPreviewRef, mobilePreviewRef]) {
-      const main = ref.current?.contentDocument?.querySelector("main");
-      main?.style.setProperty("--color-accent", color);
-    }
+  const previewKennel = draftKennel ?? kennel;
+  const previewDogs = useMemo(() => {
+    if (!draftDog) return dogs;
+    const exists = dogs.some((d) => d.id === draftDog.id);
+    return exists
+      ? dogs.map((d) => (d.id === draftDog.id ? draftDog : d))
+      : [...dogs, draftDog];
+  }, [dogs, draftDog]);
+  const previewBreedings = useMemo(() => {
+    if (!draftBreeding) return breedings;
+    const exists = breedings.some((b) => b.id === draftBreeding.id);
+    return exists
+      ? breedings.map((b) => (b.id === draftBreeding.id ? draftBreeding : b))
+      : [...breedings, draftBreeding];
+  }, [breedings, draftBreeding]);
+
+  // El panel de preview vive en un iframe real (no renderizado directo
+  // aqui) para que sus estilos responsivos (sm:/md:/lg:) se calculen
+  // contra el ancho del panel, no contra el del navegador completo.
+  // Los datos (incluyendo cambios sin guardar) se le mandan por
+  // postMessage cada vez que cambian.
+  function sendPreviewData(win: Window | null | undefined) {
+    win?.postMessage(
+      {
+        type: "kennel-dashboard-preview",
+        payload: {
+          kennel: previewKennel,
+          dogs: previewDogs,
+          breedings: previewBreedings,
+        },
+      },
+      window.location.origin
+    );
   }
 
+  useEffect(() => {
+    sendPreviewData(desktopPreviewRef.current?.contentWindow);
+    sendPreviewData(mobilePreviewRef.current?.contentWindow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewKennel, previewDogs, previewBreedings]);
+
+  useEffect(() => {
+    function handleReady(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type !== "kennel-dashboard-preview-ready") return;
+      sendPreviewData(e.source as Window);
+    }
+    window.addEventListener("message", handleReady);
+    return () => window.removeEventListener("message", handleReady);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewKennel, previewDogs, previewBreedings]);
+
   function goMenu() {
+    setDraftKennel(null);
+    setDraftDog(null);
+    setDraftBreeding(null);
     setView({ screen: "menu" });
   }
 
@@ -143,7 +186,7 @@ export default function DashboardApp({
       <KennelInfoForm
         kennel={kennel}
         isAdmin={isAdmin}
-        onAccentColorPreview={previewAccentColor}
+        onDraftChange={setDraftKennel}
       />
     );
   } else if (view.screen === "section") {
@@ -170,8 +213,10 @@ export default function DashboardApp({
     if (section) {
       const dog = view.dogId ? dogs.find((d) => d.id === view.dogId) : undefined;
       title = dog ? `Edit ${dog.name}` : `Add to ${section.label}`;
-      const backToSection = () =>
+      const backToSection = () => {
+        setDraftDog(null);
         setView({ screen: "section", sectionKey: section.key });
+      };
       onBack = backToSection;
       content = (
         <DogForm
@@ -180,6 +225,7 @@ export default function DashboardApp({
           categories={section.categories}
           onDone={backToSection}
           onCancel={backToSection}
+          onDraftChange={setDraftDog}
         />
       );
     }
@@ -198,7 +244,10 @@ export default function DashboardApp({
       ? breedings.find((b) => b.id === view.breedingId)
       : undefined;
     title = breeding ? `Edit ${breeding.title ?? "breeding"}` : "Add a breeding";
-    const backToList = () => setView({ screen: "breedings" });
+    const backToList = () => {
+      setDraftBreeding(null);
+      setView({ screen: "breedings" });
+    };
     onBack = backToList;
     content = (
       <BreedingForm
@@ -206,6 +255,7 @@ export default function DashboardApp({
         kennelId={kennel.id}
         onDone={backToList}
         onCancel={backToList}
+        onDraftChange={setDraftBreeding}
       />
     );
   }
@@ -229,12 +279,11 @@ export default function DashboardApp({
         <div className="hidden w-[380px] shrink-0 border-l border-saddle/15 dark:border-brass/15 md:block">
           <div className="sticky top-0 h-screen p-4">
             <p className="mb-2 text-xs font-bold uppercase tracking-wide text-saddle dark:text-brass">
-              Your public page
+              Your public page (live)
             </p>
             <iframe
-              key={dataFingerprint}
               ref={desktopPreviewRef}
-              src={publicHref}
+              src="/preview"
               title="Public page preview"
               className="h-[calc(100%-28px)] w-full rounded-xl border border-saddle/15 dark:border-brass/15"
             />
@@ -242,11 +291,12 @@ export default function DashboardApp({
         </div>
       </div>
 
-      {/* Movil: toggle de pantalla completa, no panel lado a lado. */}
+      {/* Pantalla completa: para ver el preview en grande (desktop o
+          movil) sin salir del dashboard ni tener que guardar primero. */}
       {previewOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-paper dark:bg-ink md:hidden">
+        <div className="fixed inset-0 z-50 flex flex-col bg-paper dark:bg-ink">
           <div className="flex items-center justify-between border-b border-saddle/15 p-4 dark:border-brass/15">
-            <span className="font-semibold">Your public page</span>
+            <span className="font-semibold">Your public page (live)</span>
             <button
               type="button"
               onClick={() => setPreviewOpen(false)}
@@ -257,9 +307,8 @@ export default function DashboardApp({
             </button>
           </div>
           <iframe
-            key={dataFingerprint}
             ref={mobilePreviewRef}
-            src={publicHref}
+            src="/preview"
             title="Public page preview"
             className="flex-1"
           />
@@ -285,14 +334,14 @@ function TopBar({
   onOpenPreview: () => void;
 }) {
   return (
-    <div className="mb-6 flex items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-3">
+    <div className="mb-6 flex items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         {onBack && (
           <button
             type="button"
             onClick={onBack}
             aria-label="Back"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-saddle/25 dark:border-brass/25"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-saddle/25 dark:border-brass/25"
           >
             <ArrowLeftIcon />
           </button>
@@ -301,22 +350,25 @@ function TopBar({
           <p className="truncate text-xs font-bold uppercase tracking-wide text-saddle dark:text-brass">
             {title ? kennel.name : "Dashboard"}
           </p>
-          <h1 className="truncate text-xl font-bold">{title ?? kennel.name}</h1>
+          <h1 className="truncate text-lg font-bold sm:text-xl">
+            {title ?? kennel.name}
+          </h1>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5">
         <button
           type="button"
           onClick={onOpenPreview}
-          aria-label="View my page"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-saddle/25 text-onlight dark:border-brass/25 dark:text-ink-text md:hidden"
+          aria-label="View live preview"
+          title="View live preview"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-saddle/25 text-onlight dark:border-brass/25 dark:text-ink-text"
         >
           <EyeIcon />
         </button>
         {backLink && (
           <Link
             href={backLink.href}
-            className="rounded-full border border-saddle/25 px-3 py-2 text-xs font-bold uppercase tracking-wide dark:border-brass/25"
+            className="rounded-full border border-saddle/25 px-2.5 py-2 text-[0.65rem] font-bold uppercase tracking-wide dark:border-brass/25"
           >
             {backLink.label}
           </Link>
@@ -325,7 +377,7 @@ function TopBar({
           <form action={onSignOut}>
             <button
               type="submit"
-              className="rounded-full border border-saddle/25 px-3 py-2 text-xs font-bold uppercase tracking-wide dark:border-brass/25"
+              className="rounded-full border border-saddle/25 px-2.5 py-2 text-[0.65rem] font-bold uppercase tracking-wide dark:border-brass/25"
             >
               Log out
             </button>

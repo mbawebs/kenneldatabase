@@ -8,21 +8,23 @@ const BUCKET = "kennel-media";
 
 // Cuadricula de fotos tipo Instagram/Canva: miniaturas grandes con
 // preview real + un tile de "+" al final para agregar mas. Nada de
-// input de archivo generico a la vista.
+// input de archivo generico a la vista. Controlado (value/onChange)
+// para que el padre sepa de cada cambio al instante.
 export default function MultiImageUploadField({
   name,
   label,
   kennelId,
   folder,
-  defaultValue,
+  value: urls,
+  onChange,
 }: {
   name: string;
   label: string;
   kennelId: string;
   folder: string;
-  defaultValue?: string[] | null;
+  value: string[];
+  onChange: (urls: string[]) => void;
 }) {
-  const [urls, setUrls] = useState<string[]>(defaultValue ?? []);
   const [status, setStatus] = useState<"idle" | "uploading" | "error">(
     "idle"
   );
@@ -56,7 +58,7 @@ export default function MultiImageUploadField({
       uploaded.push(data.publicUrl);
     }
 
-    setUrls((prev) => [...prev, ...uploaded]);
+    onChange([...urls, ...uploaded]);
     setStatus("idle");
   }
 
@@ -73,7 +75,7 @@ export default function MultiImageUploadField({
   }
 
   function removeUrl(url: string) {
-    setUrls((prev) => prev.filter((u) => u !== url));
+    onChange(urls.filter((u) => u !== url));
   }
 
   return (

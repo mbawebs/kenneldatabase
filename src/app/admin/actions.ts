@@ -72,9 +72,6 @@ export async function createKennel(
     city: optional("city"),
     phone: optional("phone"),
     email: optional("email"),
-    whatsapp: optional("whatsapp"),
-    instagram: optional("instagram"),
-    facebook: optional("facebook"),
     status: optional("status") ?? "active",
     plan,
   });

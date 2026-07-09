@@ -7,13 +7,16 @@ const BUCKET = "kennel-media";
 
 // Slot de foto unica (logo, portada): un cuadro grande con preview
 // inmediato, no un input de archivo generico. "square" para logo,
-// "wide" para portada (16:9).
+// "wide" para portada (16:9). Controlado (value/onChange) para que el
+// formulario padre sepa de cada cambio al instante (vista previa en
+// vivo), no solo al guardar.
 export default function ImageUploadField({
   name,
   label,
   kennelId,
   folder,
-  defaultValue,
+  value,
+  onChange,
   aspect = "square",
   hint,
 }: {
@@ -21,11 +24,11 @@ export default function ImageUploadField({
   label: string;
   kennelId: string;
   folder: string;
-  defaultValue?: string | null;
+  value: string;
+  onChange: (url: string) => void;
   aspect?: "square" | "wide";
   hint?: string;
 }) {
-  const [url, setUrl] = useState(defaultValue ?? "");
   const [status, setStatus] = useState<"idle" | "uploading" | "error">(
     "idle"
   );
@@ -53,7 +56,7 @@ export default function ImageUploadField({
     }
 
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    setUrl(data.publicUrl);
+    onChange(data.publicUrl);
     setStatus("idle");
   }
 
@@ -83,7 +86,7 @@ export default function ImageUploadField({
           {hint}
         </p>
       )}
-      <input type="hidden" name={name} value={url} />
+      <input type="hidden" name={name} value={value} />
 
       <div
         onDragOver={(e) => {
@@ -101,15 +104,15 @@ export default function ImageUploadField({
             : "border-saddle/30 dark:border-brass/30"
         }`}
       >
-        {url ? (
+        {value ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="h-full w-full object-cover" />
+            <img src={value} alt="" className="h-full w-full object-cover" />
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setUrl("");
+                onChange("");
               }}
               aria-label="Remove photo"
               className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
