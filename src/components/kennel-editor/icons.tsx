@@ -108,3 +108,26 @@ export function TrashIcon(props: { className?: string }) {
 export function XIcon(props: { className?: string }) {
   return base(<path d="M6 6l12 12M18 6L6 18" />, props.className);
 }
+
+export function CopyIcon(props: { className?: string }) {
+  return base(
+    <>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+    </>,
+    props.className
+  );
+}
+
+export function CheckIcon(props: { className?: string }) {
+  return base(<path d="M5 13l4 4L19 7" />, props.className);
+}
+
+export function ExternalLinkIcon(props: { className?: string }) {
+  return base(
+    <>
+      <path d="M14 5h5v5M19 5l-9 9M9 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3" />
+    </>,
+    props.className
+  );
+}

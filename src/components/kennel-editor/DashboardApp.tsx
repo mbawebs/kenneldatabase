@@ -20,6 +20,9 @@ import {
   PencilIcon,
   TrashIcon,
   XIcon,
+  CopyIcon,
+  CheckIcon,
+  ExternalLinkIcon,
 } from "./icons";
 
 type IconComponent = (props: { className?: string }) => React.JSX.Element;
@@ -76,6 +79,7 @@ export default function DashboardApp({
   isAdmin = false,
   backLink,
   onSignOut,
+  publicUrl,
 }: {
   kennel: Kennel;
   dogs: Dog[];
@@ -86,6 +90,10 @@ export default function DashboardApp({
   backLink?: { href: string; label: string };
   // Solo se pasa desde /dashboard.
   onSignOut?: () => void | Promise<void>;
+  // URL absoluta de la landing publica (armada en el servidor a
+  // partir del host real de la request), para poder copiarla/abrirla
+  // tal cual desde el menu.
+  publicUrl: string;
 }) {
   const [view, setView] = useState<View>({ screen: "menu" });
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -121,7 +129,12 @@ export default function DashboardApp({
 
   if (view.screen === "menu") {
     content = (
-      <MenuScreen dogs={dogs} breedings={breedings} onNavigate={setView} />
+      <MenuScreen
+        dogs={dogs}
+        breedings={breedings}
+        publicUrl={publicUrl}
+        onNavigate={setView}
+      />
     );
   } else if (view.screen === "info") {
     title = "Kennel info";
@@ -326,10 +339,12 @@ function TopBar({
 function MenuScreen({
   dogs,
   breedings,
+  publicUrl,
   onNavigate,
 }: {
   dogs: Dog[];
   breedings: Breeding[];
+  publicUrl: string;
   onNavigate: (view: View) => void;
 }) {
   const cards: {
@@ -369,23 +384,64 @@ function MenuScreen({
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {cards.map((card) => (
-        <button
-          key={card.key}
-          type="button"
-          onClick={card.onClick}
-          className="flex flex-col items-start gap-2.5 rounded-2xl border border-saddle/20 bg-white p-4 text-left transition-colors hover:border-saddle/40 dark:border-brass/20 dark:bg-ink-2 dark:hover:border-brass/40"
-        >
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-saddle/10 text-saddle dark:bg-brass/10 dark:text-brass">
-            <card.icon className="h-5 w-5" />
-          </span>
-          <span className="font-semibold leading-tight">{card.label}</span>
-          <span className="text-xs leading-tight text-onlight-dim dark:text-ink-text-dim">
-            {card.meta}
-          </span>
-        </button>
-      ))}
+    <div className="space-y-3">
+      <PublicLinkCard publicUrl={publicUrl} />
+      <div className="grid grid-cols-2 gap-3">
+        {cards.map((card) => (
+          <button
+            key={card.key}
+            type="button"
+            onClick={card.onClick}
+            className="flex flex-col items-start gap-2.5 rounded-2xl border border-saddle/20 bg-white p-4 text-left transition-colors hover:border-saddle/40 dark:border-brass/20 dark:bg-ink-2 dark:hover:border-brass/40"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-saddle/10 text-saddle dark:bg-brass/10 dark:text-brass">
+              <card.icon className="h-5 w-5" />
+            </span>
+            <span className="font-semibold leading-tight">{card.label}</span>
+            <span className="text-xs leading-tight text-onlight-dim dark:text-ink-text-dim">
+              {card.meta}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PublicLinkCard({ publicUrl }: { publicUrl: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(publicUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-saddle/20 bg-white p-3.5 dark:border-brass/20 dark:bg-ink-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold uppercase tracking-wide text-saddle dark:text-brass">
+          Public page link
+        </p>
+        <p className="truncate text-sm">{publicUrl}</p>
+      </div>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label="Copy link"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-saddle/25 text-onlight dark:border-brass/25 dark:text-ink-text"
+      >
+        {copied ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
+      </button>
+      <a
+        href={publicUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Open public page"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-saddle/25 text-onlight dark:border-brass/25 dark:text-ink-text"
+      >
+        <ExternalLinkIcon className="h-4 w-4" />
+      </a>
     </div>
   );
 }

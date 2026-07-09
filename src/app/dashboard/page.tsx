@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getKennelMembership } from "@/lib/supabase/auth";
 import { signOut } from "@/lib/supabase/actions";
+import { getPublicOrigin } from "@/lib/get-public-origin";
 import DashboardApp from "@/components/kennel-editor/DashboardApp";
 
 export default async function DashboardPage() {
@@ -53,12 +54,15 @@ export default async function DashboardPage() {
     );
   }
 
+  const origin = await getPublicOrigin();
+
   return (
     <DashboardApp
       kennel={kennel}
       dogs={dogs ?? []}
       breedings={breedings ?? []}
       onSignOut={signOut}
+      publicUrl={`${origin}/${kennel.slug}`}
     />
   );
 }

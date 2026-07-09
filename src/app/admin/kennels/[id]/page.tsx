@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isAdmin } from "@/lib/supabase/auth";
+import { getPublicOrigin } from "@/lib/get-public-origin";
 import DashboardApp from "@/components/kennel-editor/DashboardApp";
 
 export default async function AdminKennelManagePage({
@@ -49,6 +50,8 @@ export default async function AdminKennelManagePage({
     notFound();
   }
 
+  const origin = await getPublicOrigin();
+
   return (
     <DashboardApp
       kennel={kennel}
@@ -56,6 +59,7 @@ export default async function AdminKennelManagePage({
       breedings={breedings ?? []}
       isAdmin
       backLink={{ href: "/admin", label: "Back to admin panel" }}
+      publicUrl={`${origin}/${kennel.slug}`}
     />
   );
 }
