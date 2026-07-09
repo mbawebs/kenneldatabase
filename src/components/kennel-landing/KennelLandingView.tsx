@@ -353,10 +353,24 @@ function DogCard({ dog }: { dog: Dog }) {
             </p>
           )}
         </div>
-        {dog.price && (
-          <p className="mt-4 inline-block self-start bg-[var(--color-accent)] px-3 py-1.5 font-body text-sm font-extrabold text-ink-text">
-            {dog.price}
-          </p>
+        {(dog.price || dog.pedigree_url) && (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {dog.price && (
+              <p className="inline-block bg-[var(--color-accent)] px-3 py-1.5 font-body text-sm font-extrabold text-ink-text">
+                {dog.price}
+              </p>
+            )}
+            {dog.pedigree_url && (
+              <a
+                href={dog.pedigree_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-body text-xs font-bold uppercase tracking-wide text-ink-text-dim underline decoration-ink-text-dim/40 underline-offset-2 transition-colors hover:text-[var(--color-accent)] hover:decoration-[var(--color-accent)]"
+              >
+                View pedigree ↗
+              </a>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -1,15 +1,33 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { createClient } from "@/lib/supabase/client";
 import { SpinnerIcon } from "./ImageUploadField";
+import { GripIcon } from "./icons";
 
 const BUCKET = "kennel-media";
 
 // Cuadricula de fotos tipo Instagram/Canva: miniaturas grandes con
-// preview real + un tile de "+" al final para agregar mas. Nada de
-// input de archivo generico a la vista. Controlado (value/onChange)
-// para que el padre sepa de cada cambio al instante.
+// preview real, reordenables arrastrando desde la agarradera de la
+// esquina (mouse o dedo), + un tile de "+" al final para agregar mas.
+// Controlado (value/onChange) para que el padre sepa de cada cambio
+// al instante.
 export default function MultiImageUploadField({
   name,
   label,
@@ -32,6 +50,17 @@ export default function MultiImageUploadField({
   const [isDragOver, setIsDragOver] = useState(false);
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Dos sensores para cubrir mouse y tactil de forma confiable:
+  // PointerSensor (mouse/pen/algunos touch) con un pequeno umbral de
+  // distancia, y TouchSensor (touchstart real) con un delay corto —
+  // asi un tap normal no dispara un drag mientras se hace scroll.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    })
+  );
 
   async function uploadFiles(files: FileList | File[]) {
     setStatus("uploading");
@@ -78,6 +107,15 @@ export default function MultiImageUploadField({
     onChange(urls.filter((u) => u !== url));
   }
 
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = urls.indexOf(String(active.id));
+    const newIndex = urls.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    onChange(arrayMove(urls, oldIndex, newIndex));
+  }
+
   return (
     <div className="space-y-2">
       <label
@@ -102,23 +140,21 @@ export default function MultiImageUploadField({
           isDragOver ? "bg-saddle/5 dark:bg-brass/10" : ""
         }`}
       >
-        {urls.map((url) => (
-          <div
-            key={url}
-            className="relative aspect-square overflow-hidden rounded-xl bg-parchment dark:bg-ink-3"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="h-full w-full object-cover" />
-            <button
-              type="button"
-              onClick={() => removeUrl(url)}
-              aria-label="Remove photo"
-              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-            >
-              <XIcon />
-            </button>
-          </div>
-        ))}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={urls} strategy={rectSortingStrategy}>
+            {urls.map((url) => (
+              <SortablePhotoTile
+                key={url}
+                url={url}
+                onRemove={() => removeUrl(url)}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
 
         <button
           type="button"
@@ -140,6 +176,13 @@ export default function MultiImageUploadField({
         </button>
       </div>
 
+      {urls.length > 1 && (
+        <p className="text-xs text-onlight-dim dark:text-ink-text-dim">
+          Drag the {"⠇"} handle to reorder. The first photo is the cover
+          shown on the card.
+        </p>
+      )}
+
       <input
         id={inputId}
         ref={fileInputRef}
@@ -155,6 +198,52 @@ export default function MultiImageUploadField({
           {errorMessage}
         </p>
       )}
+    </div>
+  );
+}
+
+function SortablePhotoTile({
+  url,
+  onRemove,
+}: {
+  url: string;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: url });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative aspect-square overflow-hidden rounded-xl bg-parchment dark:bg-ink-3"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="" className="h-full w-full object-cover" />
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label="Drag to reorder"
+        className="absolute left-1.5 top-1.5 flex h-7 w-7 touch-none items-center justify-center rounded-full bg-black/60 text-white active:cursor-grabbing"
+      >
+        <GripIcon className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove photo"
+        className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+      >
+        <XIcon />
+      </button>
     </div>
   );
 }

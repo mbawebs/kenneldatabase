@@ -131,3 +131,23 @@ export function ExternalLinkIcon(props: { className?: string }) {
     props.className
   );
 }
+
+// Agarradera para arrastrar (seis puntos, 2x3) — se usa en las
+// esquinas de cada foto para reordenarlas.
+export function GripIcon(props: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={props.className ?? "h-4 w-4"}
+      aria-hidden="true"
+    >
+      <circle cx="8" cy="6" r="1.6" />
+      <circle cx="8" cy="12" r="1.6" />
+      <circle cx="8" cy="18" r="1.6" />
+      <circle cx="16" cy="6" r="1.6" />
+      <circle cx="16" cy="12" r="1.6" />
+      <circle cx="16" cy="18" r="1.6" />
+    </svg>
+  );
+}
