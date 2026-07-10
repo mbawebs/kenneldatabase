@@ -8,6 +8,8 @@ import { toggleKennelStatus } from "./actions";
 import CreateKennelForm from "./CreateKennelForm";
 import CreateUserForm from "./CreateUserForm";
 import ResetPasswordControl from "./ResetPasswordControl";
+import SiteSettingsForm from "./SiteSettingsForm";
+import type { SiteSettings } from "@/lib/supabase/types";
 
 export default async function AdminPage() {
   const user = await getCurrentUser();
@@ -48,6 +50,21 @@ export default async function AdminPage() {
   const emailByUserId = new Map(
     (authUsers?.users ?? []).map((u) => [u.id, u.email ?? "(no email)"])
   );
+
+  const { data: siteSettingsRow } = await supabase
+    .from("site_settings")
+    .select("*")
+    .eq("id", true)
+    .single();
+  const siteSettings: SiteSettings = siteSettingsRow ?? {
+    hero_image_url: null,
+    top_banner_text: null,
+    top_banner_link: null,
+    banner_left_image_url: null,
+    banner_left_link: null,
+    banner_right_image_url: null,
+    banner_right_link: null,
+  };
 
   return (
     <main className="min-h-screen bg-paper text-onlight dark:bg-ink dark:text-ink-text">
@@ -215,6 +232,11 @@ export default async function AdminPage() {
         <section>
           <h2 className="mb-4 font-display text-lg">Add a user</h2>
           <CreateUserForm kennels={kennels ?? []} />
+        </section>
+
+        <section>
+          <h2 className="mb-4 font-display text-lg">Homepage</h2>
+          <SiteSettingsForm settings={siteSettings} />
         </section>
       </div>
     </main>

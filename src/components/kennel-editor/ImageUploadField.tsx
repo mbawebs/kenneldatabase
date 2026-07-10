@@ -28,7 +28,7 @@ export default function ImageUploadField({
   folder: string;
   value: string;
   onChange: (url: string) => void;
-  aspect?: "square" | "wide";
+  aspect?: "square" | "wide" | "tall";
   hint?: string;
   // Cuando se pasan ambos (solo tiene sentido para aspect="wide"), la
   // foto ya subida se puede arrastrar verticalmente para elegir que
@@ -139,7 +139,13 @@ export default function ImageUploadField({
         onClick={canReposition ? undefined : () => fileInputRef.current?.click()}
         className={`relative flex items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${
           canReposition ? "" : "cursor-pointer"
-        } ${aspect === "wide" ? "aspect-[16/9] w-full" : "h-36 w-36"} ${
+        } ${
+          aspect === "wide"
+            ? "aspect-[16/9] w-full"
+            : aspect === "tall"
+              ? "aspect-[1/3] w-full max-w-[220px]"
+              : "h-36 w-36"
+        } ${
           isDragOver
             ? "border-saddle bg-saddle/5 dark:border-brass dark:bg-brass/10"
             : "border-saddle/30 dark:border-brass/30"

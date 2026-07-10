@@ -195,3 +195,42 @@ export async function resetKennelUserPassword(
 
   return { error: null, success: true };
 }
+
+export interface UpdateSiteSettingsState {
+  error: string | null;
+  success?: boolean;
+}
+
+export async function updateSiteSettings(
+  _prevState: UpdateSiteSettingsState,
+  formData: FormData
+): Promise<UpdateSiteSettingsState> {
+  await requireAdmin();
+
+  const optional = (key: string) => {
+    const value = String(formData.get(key) ?? "").trim();
+    return value === "" ? null : value;
+  };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("site_settings")
+    .update({
+      hero_image_url: optional("hero_image_url"),
+      top_banner_text: optional("top_banner_text"),
+      top_banner_link: optional("top_banner_link"),
+      banner_left_image_url: optional("banner_left_image_url"),
+      banner_left_link: optional("banner_left_link"),
+      banner_right_image_url: optional("banner_right_image_url"),
+      banner_right_link: optional("banner_right_link"),
+    })
+    .eq("id", true);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { error: null, success: true };
+}

@@ -110,3 +110,16 @@ export interface GalleryPhoto {
   display_order: number;
   created_at: string;
 }
+
+// Fila unica (id siempre = true) con la configuracion visual del Home
+// publico: imagen del hero, banner de anuncio arriba, y los dos
+// banners verticales laterales vendibles como publicidad.
+export interface SiteSettings {
+  hero_image_url: string | null;
+  top_banner_text: string | null;
+  top_banner_link: string | null;
+  banner_left_image_url: string | null;
+  banner_left_link: string | null;
+  banner_right_image_url: string | null;
+  banner_right_link: string | null;
+}
