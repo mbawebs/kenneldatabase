@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import LightboxProvider from "@/components/lightbox/LightboxProvider";
 import ClickableImage from "@/components/lightbox/ClickableImage";
@@ -344,20 +344,40 @@ function CarouselRow({
   children: React.ReactNode;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Arranca en count > 1 para que la flecha derecha ya se vea en el
+  // primer render (antes de que el effect de abajo pueda medir el
+  // scroll real). La izquierda siempre arranca oculta: al cargar la
+  // pagina el carrusel siempre esta al principio.
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(count > 1);
+
+  function updateArrows() {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollPrev(el.scrollLeft > 4);
+    setCanScrollNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }
+
+  useEffect(() => {
+    updateArrows();
+    window.addEventListener("resize", updateArrows);
+    return () => window.removeEventListener("resize", updateArrows);
+  }, [count]);
 
   // La flecha era solo un overlay decorativo (pointer-events-none):
   // el click le "atravesaba" y llegaba a la foto de la siguiente
-  // tarjeta, abriendo el lightbox en vez de avanzar. Ahora es un
-  // boton real que desliza el carrusel una tarjeta a la vez.
-  function scrollNext() {
+  // tarjeta, abriendo el lightbox en vez de avanzar. Ahora son
+  // botones reales que deslizan el carrusel una tarjeta a la vez, y
+  // cada uno solo se muestra cuando de verdad hay hacia donde ir.
+  function scrollByCard(direction: 1 | -1) {
     const container = scrollRef.current;
     const firstCard = container?.firstElementChild as HTMLElement | null;
     if (!container || !firstCard) return;
-    const step = firstCard.getBoundingClientRect().width + 16; // gap-4
+    const step = (firstCard.getBoundingClientRect().width + 16) * direction; // gap-4
     // "smooth" peleaba con scroll-snap-mandatory: el navegador cancelaba
     // la animacion a medio camino y el scroll regresaba a 0. El salto
     // instantaneo de todos modos se ve limpio porque el snap alinea el
-    // borde de la siguiente tarjeta.
+    // borde de la tarjeta destino.
     container.scrollBy({ left: step, behavior: "auto" });
   }
 
@@ -365,15 +385,36 @@ function CarouselRow({
     <div className="relative">
       <div
         ref={scrollRef}
+        onScroll={updateArrows}
         className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
         style={{ scrollPaddingInline: "1.5rem" }}
       >
         {children}
       </div>
-      {count > 1 && (
+      {canScrollPrev && (
         <button
           type="button"
-          onClick={scrollNext}
+          onClick={() => scrollByCard(-1)}
+          aria-label="Show previous"
+          className="absolute inset-y-0 left-0 flex w-14 items-center justify-start bg-gradient-to-r from-ink via-ink/70 to-transparent sm:w-20"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="ml-2 h-5 w-5 text-ink-text/80"
+          >
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+        </button>
+      )}
+      {canScrollNext && (
+        <button
+          type="button"
+          onClick={() => scrollByCard(1)}
           aria-label="Show more"
           className="absolute inset-y-0 right-0 flex w-14 items-center justify-end bg-gradient-to-l from-ink via-ink/70 to-transparent sm:w-20"
         >
