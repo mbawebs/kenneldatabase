@@ -27,6 +27,12 @@ export default function SiteSettingsForm({
   const [rightUrl, setRightUrl] = useState(
     settings.banner_right_image_url ?? ""
   );
+  const [mobileTopUrl, setMobileTopUrl] = useState(
+    settings.mobile_banner_top_image_url ?? ""
+  );
+  const [mobileBottomUrl, setMobileBottomUrl] = useState(
+    settings.mobile_banner_bottom_image_url ?? ""
+  );
 
   return (
     <form
@@ -143,6 +149,76 @@ export default function SiteSettingsForm({
               placeholder="https://..."
               className={inputClass}
             />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3 border-t border-saddle/15 pt-6 dark:border-brass/15">
+        <p className={labelClass}>Mobile banners</p>
+        <p className="text-xs text-onlight-dim dark:text-ink-text-dim">
+          The two side banners above are hidden on phones/tablets (no room
+          without squeezing the search fields). These two horizontal
+          banners take their place there instead — one above the search
+          fields, one at the very bottom of the page. Hidden on desktop.
+        </p>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-onlight dark:text-ink-text">
+              Above the search fields
+            </p>
+            <ImageUploadField
+              name="mobile_banner_top_image_url"
+              label="Horizontal ad image"
+              hint="Wide and short, around 1200×400px"
+              kennelId={SITE_ASSETS_ID}
+              folder="mobile-banner-top"
+              aspect="banner"
+              value={mobileTopUrl}
+              onChange={setMobileTopUrl}
+            />
+            <div className="space-y-1">
+              <label htmlFor="mobile_banner_top_link" className={labelClass}>
+                Link
+              </label>
+              <input
+                id="mobile_banner_top_link"
+                name="mobile_banner_top_link"
+                defaultValue={settings.mobile_banner_top_link ?? ""}
+                placeholder="https://..."
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-onlight dark:text-ink-text">
+              Bottom of the page
+            </p>
+            <ImageUploadField
+              name="mobile_banner_bottom_image_url"
+              label="Horizontal ad image"
+              hint="Wide and short, around 1200×400px"
+              kennelId={SITE_ASSETS_ID}
+              folder="mobile-banner-bottom"
+              aspect="banner"
+              value={mobileBottomUrl}
+              onChange={setMobileBottomUrl}
+            />
+            <div className="space-y-1">
+              <label
+                htmlFor="mobile_banner_bottom_link"
+                className={labelClass}
+              >
+                Link
+              </label>
+              <input
+                id="mobile_banner_bottom_link"
+                name="mobile_banner_bottom_link"
+                defaultValue={settings.mobile_banner_bottom_link ?? ""}
+                placeholder="https://..."
+                className={inputClass}
+              />
+            </div>
           </div>
         </div>
       </div>

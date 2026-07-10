@@ -64,6 +64,10 @@ export default async function AdminPage() {
     banner_left_link: null,
     banner_right_image_url: null,
     banner_right_link: null,
+    mobile_banner_top_image_url: null,
+    mobile_banner_top_link: null,
+    mobile_banner_bottom_image_url: null,
+    mobile_banner_bottom_link: null,
   };
 
   return (

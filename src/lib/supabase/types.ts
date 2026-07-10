@@ -122,4 +122,11 @@ export interface SiteSettings {
   banner_left_link: string | null;
   banner_right_image_url: string | null;
   banner_right_link: string | null;
+  // Los banners laterales se ocultan en movil/tablet (no caben sin
+  // apretar el buscador); estos dos son su reemplazo horizontal,
+  // visibles solo por debajo de ese mismo punto de quiebre.
+  mobile_banner_top_image_url: string | null;
+  mobile_banner_top_link: string | null;
+  mobile_banner_bottom_image_url: string | null;
+  mobile_banner_bottom_link: string | null;
 }

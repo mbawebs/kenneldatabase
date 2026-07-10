@@ -36,7 +36,13 @@ const EMPTY_SETTINGS: SiteSettings = {
   banner_left_link: null,
   banner_right_image_url: null,
   banner_right_link: null,
+  mobile_banner_top_image_url: null,
+  mobile_banner_top_link: null,
+  mobile_banner_bottom_image_url: null,
+  mobile_banner_bottom_link: null,
 };
+
+const PAGE_SIZE = 6;
 
 export default async function HomePage({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
@@ -92,6 +98,17 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   });
 
   const hasFilters = Boolean(countryFilter || breedFilter);
+
+  // Paginado simple: cambiar de filtro siempre resetea a la pagina 1
+  // (el form GET solo manda country/breed, "page" queda fuera del
+  // querystring sin necesidad de manejarlo aparte).
+  const totalPages = Math.max(1, Math.ceil(filteredKennels.length / PAGE_SIZE));
+  const requestedPage = Number(firstValue(params.page)) || 1;
+  const currentPage = Math.min(Math.max(1, requestedPage), totalPages);
+  const pageKennels = filteredKennels.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   const { data: settingsRow } = await supabase
     .from("site_settings")
@@ -167,6 +184,14 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           />
 
           <div className="mx-auto min-w-0 max-w-5xl flex-1">
+            <MobileBanner
+              imageUrl={settings.mobile_banner_top_image_url}
+              link={settings.mobile_banner_top_link}
+              adminContactEmail={adminContactEmail}
+              placement="mobile top banner"
+              className="mb-6"
+            />
+
             <form
               method="GET"
               className="flex flex-wrap items-end gap-4 border-b border-saddle/15 pb-6"
@@ -232,13 +257,13 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             </form>
 
             <div className="mt-10">
-              {filteredKennels.length === 0 ? (
+              {pageKennels.length === 0 ? (
                 <p className="py-16 text-center text-onlight-dim">
                   No kennels match those filters yet.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  {filteredKennels.map((kennel) => (
+                  {pageKennels.map((kennel) => (
                     <KennelCard
                       key={kennel.id}
                       kennel={kennel}
@@ -248,6 +273,21 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
                 </div>
               )}
             </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              countryFilter={countryFilter}
+              breedFilter={breedFilter}
+            />
+
+            <MobileBanner
+              imageUrl={settings.mobile_banner_bottom_image_url}
+              link={settings.mobile_banner_bottom_link}
+              adminContactEmail={adminContactEmail}
+              placement="mobile bottom banner"
+              className="mt-10"
+            />
           </div>
 
           <SideBanner
@@ -360,6 +400,103 @@ function SideBanner({
         <span className="text-xs text-onlight-dim">Contact us</span>
       </a>
     </div>
+  );
+}
+
+// Reemplaza a los banners laterales en pantallas angostas (esos se
+// ocultan por debajo de xl:). Mismo patron: imagen si esta
+// configurada, si no un placeholder "Advertise Here" que invita a
+// contactar — nunca un hueco vacio silencioso.
+function MobileBanner({
+  imageUrl,
+  link,
+  adminContactEmail,
+  placement,
+  className = "",
+}: {
+  imageUrl: string | null;
+  link: string | null;
+  adminContactEmail: string | undefined;
+  placement: string;
+  className?: string;
+}) {
+  if (imageUrl) {
+    const image = (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={imageUrl} alt="Advertisement" className="w-full rounded-lg object-cover" />
+    );
+    return (
+      <div className={`block xl:hidden ${className}`}>
+        {link ? (
+          <a href={link} target="_blank" rel="noopener noreferrer sponsored">
+            {image}
+          </a>
+        ) : (
+          image
+        )}
+      </div>
+    );
+  }
+
+  if (!adminContactEmail) return null;
+
+  return (
+    <a
+      href={buildAdvertiseMailto(adminContactEmail, placement)}
+      className={`flex aspect-[3/1] w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-saddle/25 bg-parchment/40 text-center transition-colors hover:border-saddle xl:hidden ${className}`}
+    >
+      <span className="font-impact text-lg uppercase leading-tight text-saddle">
+        Advertise Here
+      </span>
+      <span className="text-xs text-onlight-dim">Contact us</span>
+    </a>
+  );
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  countryFilter,
+  breedFilter,
+}: {
+  currentPage: number;
+  totalPages: number;
+  countryFilter: string;
+  breedFilter: string;
+}) {
+  if (totalPages <= 1) return null;
+
+  function buildPageHref(page: number) {
+    const qs = new URLSearchParams();
+    if (countryFilter) qs.set("country", countryFilter);
+    if (breedFilter) qs.set("breed", breedFilter);
+    if (page > 1) qs.set("page", String(page));
+    const query = qs.toString();
+    return query ? `/?${query}` : "/";
+  }
+
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  return (
+    <nav
+      aria-label="Pagination"
+      className="mt-10 flex flex-wrap items-center justify-center gap-2"
+    >
+      {pages.map((page) => (
+        <Link
+          key={page}
+          href={buildPageHref(page)}
+          aria-current={page === currentPage ? "page" : undefined}
+          className={`flex h-9 w-9 items-center justify-center rounded-full font-body text-sm font-bold transition-colors ${
+            page === currentPage
+              ? "bg-saddle text-paper"
+              : "text-onlight-dim hover:bg-parchment"
+          }`}
+        >
+          {page}
+        </Link>
+      ))}
+    </nav>
   );
 }
 

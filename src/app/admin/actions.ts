@@ -223,6 +223,10 @@ export async function updateSiteSettings(
       banner_left_link: optional("banner_left_link"),
       banner_right_image_url: optional("banner_right_image_url"),
       banner_right_link: optional("banner_right_link"),
+      mobile_banner_top_image_url: optional("mobile_banner_top_image_url"),
+      mobile_banner_top_link: optional("mobile_banner_top_link"),
+      mobile_banner_bottom_image_url: optional("mobile_banner_bottom_image_url"),
+      mobile_banner_bottom_link: optional("mobile_banner_bottom_link"),
     })
     .eq("id", true);
 

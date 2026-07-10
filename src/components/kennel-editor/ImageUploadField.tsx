@@ -28,7 +28,7 @@ export default function ImageUploadField({
   folder: string;
   value: string;
   onChange: (url: string) => void;
-  aspect?: "square" | "wide" | "tall";
+  aspect?: "square" | "wide" | "tall" | "banner";
   hint?: string;
   // Cuando se pasan ambos (solo tiene sentido para aspect="wide"), la
   // foto ya subida se puede arrastrar verticalmente para elegir que
@@ -144,7 +144,9 @@ export default function ImageUploadField({
             ? "aspect-[16/9] w-full"
             : aspect === "tall"
               ? "aspect-[1/3] w-full max-w-[220px]"
-              : "h-36 w-36"
+              : aspect === "banner"
+                ? "aspect-[3/1] w-full"
+                : "h-36 w-36"
         } ${
           isDragOver
             ? "border-saddle bg-saddle/5 dark:border-brass dark:bg-brass/10"
