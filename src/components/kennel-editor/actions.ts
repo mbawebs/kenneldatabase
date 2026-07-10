@@ -424,6 +424,47 @@ export async function reorderDogs(kennelId: string, orderedIds: string[]) {
   revalidatePath("/[slug]", "page");
 }
 
+export interface ChangePasswordState {
+  error: string | null;
+}
+
+// Self-servicio para el dueño del kennel: cambia su propia contraseña
+// usando su sesion actual (createClient de @/lib/supabase/server ya
+// trae la cookie de auth). No requiere la service-role key, a
+// diferencia de crear usuarios nuevos desde /admin.
+export async function changePassword(
+  _prevState: ChangePasswordState,
+  formData: FormData
+): Promise<ChangePasswordState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirm_password") ?? "");
+
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+  if (password !== confirmPassword) {
+    return { error: "Passwords don't match." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { error: error.message };
+  }
+
+  // Cambiar la contraseña invalida la sesion actual (Supabase la rota
+  // por seguridad), asi que en vez de dejar que eso se sienta como un
+  // cierre de sesion sorpresivo, lo hacemos explicito: cerramos sesion
+  // y mandamos al login con un mensaje claro.
+  await supabase.auth.signOut();
+  redirect("/login?passwordChanged=1");
+}
+
 export async function reorderBreedings(kennelId: string, orderedIds: string[]) {
   await requireKennelAccess(kennelId);
 

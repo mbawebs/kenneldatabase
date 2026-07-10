@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { Suspense, useActionState, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { login, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
@@ -42,6 +43,9 @@ export default function LoginPage() {
               {state.error}
             </p>
           )}
+          <Suspense fallback={null}>
+            <PasswordChangedBanner />
+          </Suspense>
 
           <div className="space-y-1.5">
             <label
@@ -98,6 +102,17 @@ export default function LoginPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+function PasswordChangedBanner() {
+  const searchParams = useSearchParams();
+  if (searchParams.get("passwordChanged") !== "1") return null;
+
+  return (
+    <p className="border border-hunter-2 bg-hunter/20 p-3 text-sm text-ink-text">
+      Password updated. Log in with your new password.
+    </p>
   );
 }
 

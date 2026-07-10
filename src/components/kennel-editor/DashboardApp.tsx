@@ -22,6 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 import KennelInfoForm from "./KennelInfoForm";
 import DogForm from "./DogForm";
 import BreedingForm from "./BreedingForm";
+import ChangePasswordForm from "./ChangePasswordForm";
 import { deleteDog, deleteBreeding, reorderDogs, reorderBreedings } from "./actions";
 import type { Kennel, Dog, Breeding, DogCategory } from "@/lib/supabase/types";
 import {
@@ -41,6 +42,7 @@ import {
   CheckIcon,
   ExternalLinkIcon,
   GripIcon,
+  KeyIcon,
 } from "./icons";
 
 type IconComponent = (props: { className?: string }) => React.JSX.Element;
@@ -88,7 +90,8 @@ type View =
   | { screen: "section"; sectionKey: string }
   | { screen: "dog-edit"; sectionKey: string; dogId: string | null }
   | { screen: "breedings" }
-  | { screen: "breeding-edit"; breedingId: string | null };
+  | { screen: "breeding-edit"; breedingId: string | null }
+  | { screen: "account" };
 
 export default function DashboardApp({
   kennel,
@@ -194,6 +197,7 @@ export default function DashboardApp({
         dogs={dogs}
         breedings={breedings}
         publicUrl={publicUrl}
+        showAccount={!isAdmin}
         onNavigate={setView}
       />
     );
@@ -280,6 +284,10 @@ export default function DashboardApp({
         onDraftChange={setDraftBreeding}
       />
     );
+  } else if (view.screen === "account") {
+    title = "Account";
+    onBack = goMenu;
+    content = <ChangePasswordForm />;
   }
 
   return (
@@ -414,11 +422,17 @@ function MenuScreen({
   dogs,
   breedings,
   publicUrl,
+  showAccount,
   onNavigate,
 }: {
   dogs: Dog[];
   breedings: Breeding[];
   publicUrl: string;
+  // Falso cuando un super-admin esta viendo este dashboard desde
+  // /admin/kennels/[id]: "Account" cambiaria la contraseña de la
+  // sesion actual (la del admin), no la del dueño del kennel, asi que
+  // se oculta para evitar esa confusion.
+  showAccount: boolean;
   onNavigate: (view: View) => void;
 }) {
   const cards: {
@@ -455,6 +469,17 @@ function MenuScreen({
           : "Add your first breeding",
       onClick: () => onNavigate({ screen: "breedings" }),
     },
+    ...(showAccount
+      ? [
+          {
+            key: "account",
+            label: "Account",
+            icon: KeyIcon,
+            meta: "Change your password",
+            onClick: () => onNavigate({ screen: "account" }),
+          },
+        ]
+      : []),
   ];
 
   return (

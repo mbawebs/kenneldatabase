@@ -132,6 +132,16 @@ export function ExternalLinkIcon(props: { className?: string }) {
   );
 }
 
+export function KeyIcon(props: { className?: string }) {
+  return base(
+    <>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.8 12.2 20 3M17 6l3 3M14 9l2.5 2.5" />
+    </>,
+    props.className
+  );
+}
+
 // Agarradera para arrastrar (seis puntos, 2x3) — se usa en las
 // esquinas de cada foto para reordenarlas.
 export function GripIcon(props: { className?: string }) {
