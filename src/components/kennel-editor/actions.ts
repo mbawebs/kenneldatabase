@@ -175,6 +175,13 @@ function parseDogForm(
     .map((value) => String(value).trim())
     .filter(Boolean);
 
+  // El resto de los campos (nombre, descripcion, etc.) son opcionales
+  // a proposito, pero la foto no: sin ella la tarjeta se publica vacia
+  // en la landing publica, y eso ya paso varias veces por descuido.
+  if (photos.length === 0) {
+    return { error: "Add at least one photo." };
+  }
+
   return {
     data: {
       name,
@@ -185,7 +192,7 @@ function parseDogForm(
       price: optionalField(formData, "price"),
       description: optionalField(formData, "description"),
       pedigree_url: optionalField(formData, "pedigree_url"),
-      photos: photos.length > 0 ? photos : null,
+      photos,
     },
   };
 }
@@ -297,19 +304,29 @@ export interface BreedingFormState {
   success?: boolean;
 }
 
-function parseBreedingForm(formData: FormData): Record<string, unknown> {
+function parseBreedingForm(
+  formData: FormData
+): { error: string } | { data: Record<string, unknown> } {
   const photos = formData
     .getAll("photos")
     .map((value) => String(value).trim())
     .filter(Boolean);
 
+  // El resto de los campos son opcionales a proposito, pero la foto no:
+  // sin ella la tarjeta se publica vacia en la landing publica.
+  if (photos.length === 0) {
+    return { error: "Add at least one photo." };
+  }
+
   return {
-    title: optionalField(formData, "title"),
-    sire_name: optionalField(formData, "sire_name"),
-    dam_name: optionalField(formData, "dam_name"),
-    date: optionalField(formData, "date"),
-    description: optionalField(formData, "description"),
-    photos: photos.length > 0 ? photos : null,
+    data: {
+      title: optionalField(formData, "title"),
+      sire_name: optionalField(formData, "sire_name"),
+      dam_name: optionalField(formData, "dam_name"),
+      date: optionalField(formData, "date"),
+      description: optionalField(formData, "description"),
+      photos,
+    },
   };
 }
 
@@ -323,10 +340,15 @@ export async function createBreeding(
   }
   await requireKennelAccess(kennelId);
 
+  const parsed = parseBreedingForm(formData);
+  if ("error" in parsed) {
+    return { error: parsed.error };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("breedings")
-    .insert({ ...parseBreedingForm(formData), kennel_id: kennelId });
+    .insert({ ...parsed.data, kennel_id: kennelId });
 
   if (error) {
     return { error: error.message };
@@ -360,9 +382,14 @@ export async function updateBreeding(
 
   await requireKennelAccess(existing.kennel_id);
 
+  const parsed = parseBreedingForm(formData);
+  if ("error" in parsed) {
+    return { error: parsed.error };
+  }
+
   const { error } = await supabase
     .from("breedings")
-    .update(parseBreedingForm(formData))
+    .update(parsed.data)
     .eq("id", breedingId)
     .eq("kennel_id", existing.kennel_id);
 

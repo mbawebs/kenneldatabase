@@ -216,7 +216,7 @@ export default function DogForm({
 
       <MultiImageUploadField
         name="photos"
-        label="Photos"
+        label="Photos (at least 1 required)"
         kennelId={kennelId}
         folder="dogs"
         value={draft.photos ?? []}

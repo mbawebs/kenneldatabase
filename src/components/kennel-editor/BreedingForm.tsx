@@ -148,7 +148,7 @@ export default function BreedingForm({
 
       <MultiImageUploadField
         name="photos"
-        label="Photos"
+        label="Photos (at least 1 required)"
         kennelId={kennelId}
         folder="breedings"
         value={draft.photos ?? []}
