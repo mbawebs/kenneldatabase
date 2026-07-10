@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import LightboxProvider from "@/components/lightbox/LightboxProvider";
 import ClickableImage from "@/components/lightbox/ClickableImage";
@@ -343,18 +343,39 @@ function CarouselRow({
   count: number;
   children: React.ReactNode;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // La flecha era solo un overlay decorativo (pointer-events-none):
+  // el click le "atravesaba" y llegaba a la foto de la siguiente
+  // tarjeta, abriendo el lightbox en vez de avanzar. Ahora es un
+  // boton real que desliza el carrusel una tarjeta a la vez.
+  function scrollNext() {
+    const container = scrollRef.current;
+    const firstCard = container?.firstElementChild as HTMLElement | null;
+    if (!container || !firstCard) return;
+    const step = firstCard.getBoundingClientRect().width + 16; // gap-4
+    // "smooth" peleaba con scroll-snap-mandatory: el navegador cancelaba
+    // la animacion a medio camino y el scroll regresaba a 0. El salto
+    // instantaneo de todos modos se ve limpio porque el snap alinea el
+    // borde de la siguiente tarjeta.
+    container.scrollBy({ left: step, behavior: "auto" });
+  }
+
   return (
     <div className="relative">
       <div
+        ref={scrollRef}
         className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
         style={{ scrollPaddingInline: "1.5rem" }}
       >
         {children}
       </div>
       {count > 1 && (
-        <div
-          className="pointer-events-none absolute inset-y-0 right-0 flex w-14 items-center justify-end bg-gradient-to-l from-ink via-ink/70 to-transparent sm:w-20"
-          aria-hidden="true"
+        <button
+          type="button"
+          onClick={scrollNext}
+          aria-label="Show more"
+          className="absolute inset-y-0 right-0 flex w-14 items-center justify-end bg-gradient-to-l from-ink via-ink/70 to-transparent sm:w-20"
         >
           <svg
             viewBox="0 0 24 24"
@@ -367,7 +388,7 @@ function CarouselRow({
           >
             <path d="M9 6l6 6-6 6" />
           </svg>
-        </div>
+        </button>
       )}
     </div>
   );
