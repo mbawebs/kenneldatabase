@@ -54,8 +54,8 @@ export default function KennelLandingView({
   const location = [kennel.city, kennel.country].filter(Boolean).join(", ");
 
   // Bloques de sección: se arman en orden fijo y solo se listan los
-  // que tienen contenido. El index resultante alimenta la numeración
-  // "01 / 02 / 03..." y la barra de navegación.
+  // que tienen contenido. Alimenta tanto la pagina como la barra de
+  // navegación.
   const sectionBlocks: { key: string; label: string; node: React.ReactNode }[] =
     [];
   if (studs.length > 0) {
@@ -270,11 +270,9 @@ export default function KennelLandingView({
         )}
 
         <div className="mx-auto mt-12 max-w-5xl space-y-20 px-6 sm:px-10">
-          {sectionBlocks.map((block, i) => (
+          {sectionBlocks.map((block) => (
             <section key={block.key} id={block.key} className="scroll-mt-20">
-              <SectionTitle number={String(i + 1).padStart(2, "0")}>
-                {block.label}
-              </SectionTitle>
+              <SectionTitle>{block.label}</SectionTitle>
               {block.node}
             </section>
           ))}
@@ -313,18 +311,9 @@ export default function KennelLandingView({
   );
 }
 
-function SectionTitle({
-  number,
-  children,
-}: {
-  number: string;
-  children: React.ReactNode;
-}) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-7 flex items-end gap-4 border-b-2 border-ink-3 pb-4">
-      <span className="font-impact text-3xl leading-none text-[var(--color-accent)] sm:text-4xl">
-        {number}
-      </span>
+    <h2 className="mb-7 border-b-2 border-ink-3 pb-4">
       <span className="font-impact text-3xl uppercase leading-none text-ink-text sm:text-5xl">
         {children}
       </span>
