@@ -220,7 +220,8 @@ export default function KennelLandingView({
             <img
               src={kennel.cover_photo_url}
               alt={`${kennel.name} cover photo`}
-              className="absolute inset-0 h-full w-full object-cover object-top"
+              style={{ objectPosition: `center ${kennel.cover_photo_position}%` }}
+              className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
             <div className="hero-fallback absolute inset-0" />
@@ -383,6 +384,41 @@ function CarouselRow({
   );
 }
 
+// Descripcion recortada a 2 lineas por defecto; si el texto es mas
+// largo de lo que razonablemente cabe en esas 2 lineas, aparece un
+// boton "Read more" para expandirla (la tarjeta simplemente crece) y
+// "Read less" para volver a su tamaño natural. Se usa un umbral de
+// caracteres en vez de medir el layout real (scrollHeight vs
+// clientHeight): esa medicion resulto nada confiable en la primera
+// carga de la pagina (el ancho de la columna de texto todavia no
+// esta estable cuando el efecto corre), dando falsos positivos
+// incluso en textos de una sola linea.
+const DESCRIPTION_TRUNCATE_THRESHOLD = 100;
+
+function ExpandableText({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const mightOverflow = text.length > DESCRIPTION_TRUNCATE_THRESHOLD;
+
+  return (
+    <div className="mt-3">
+      <p
+        className={`text-sm text-ink-text-dim ${expanded ? "" : "line-clamp-2"}`}
+      >
+        {text}
+      </p>
+      {mightOverflow && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 font-body text-xs font-bold uppercase tracking-wide text-[var(--color-accent)] hover:underline"
+        >
+          {expanded ? "Read less" : "Read more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function DogCard({ dog }: { dog: Dog }) {
   const photo = dog.photos?.[0];
   const specRows = [
@@ -434,11 +470,7 @@ function DogCard({ dog }: { dog: Dog }) {
               ))}
             </div>
           )}
-          {dog.description && (
-            <p className="mt-3 line-clamp-2 text-sm text-ink-text-dim">
-              {dog.description}
-            </p>
-          )}
+          {dog.description && <ExpandableText text={dog.description} />}
         </div>
         {(dog.price || dog.pedigree_url) && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -518,9 +550,7 @@ function BreedingCard({ breeding }: { breeding: Breeding }) {
             </div>
           )}
           {breeding.description && (
-            <p className="mt-3 line-clamp-2 text-sm text-ink-text-dim">
-              {breeding.description}
-            </p>
+            <ExpandableText text={breeding.description} />
           )}
         </div>
       </div>

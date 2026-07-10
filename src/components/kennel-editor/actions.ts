@@ -95,6 +95,11 @@ export async function updateKennel(
     social_links: socialLinks,
   };
 
+  const coverPosition = Number(formData.get("cover_photo_position"));
+  if (Number.isFinite(coverPosition)) {
+    updates.cover_photo_position = Math.min(100, Math.max(0, Math.round(coverPosition)));
+  }
+
   const accentColor = String(formData.get("accent_color") ?? "").trim();
   if (accentColor) {
     if (!/^#[0-9a-f]{6}$/i.test(accentColor)) {

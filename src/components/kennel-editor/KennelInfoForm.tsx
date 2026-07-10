@@ -116,6 +116,13 @@ export default function KennelInfoForm({
               aspect="wide"
               value={draft.cover_photo_url ?? ""}
               onChange={(url) => update("cover_photo_url", url || null)}
+              position={draft.cover_photo_position}
+              onPositionChange={(pos) => update("cover_photo_position", pos)}
+            />
+            <input
+              type="hidden"
+              name="cover_photo_position"
+              value={draft.cover_photo_position}
             />
           </div>
         </div>

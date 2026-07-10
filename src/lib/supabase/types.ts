@@ -43,6 +43,10 @@ export interface Kennel {
   slug: string;
   logo_url: string | null;
   cover_photo_url: string | null;
+  // 0-100, ver comentario en la migracion 20260711120000: es el % Y
+  // de object-position, para que el dueño pueda arrastrar la portada
+  // y elegir que parte de la foto se ve dentro del marco.
+  cover_photo_position: number;
   description: string | null;
   country: string | null;
   city: string | null;
