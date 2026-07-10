@@ -158,3 +158,40 @@ export async function createKennelUser(
   revalidatePath("/admin");
   return { error: null, success: true };
 }
+
+export interface ResetPasswordState {
+  error: string | null;
+  success?: boolean;
+}
+
+// Para cuando un dueño de kennel olvida su contraseña y escribe a
+// contactar administración: el admin le asigna una temporal aqui
+// mismo, sin necesitar (ni poder) conocer la anterior — mismo
+// mecanismo de service-role que createKennelUser.
+export async function resetKennelUserPassword(
+  _prevState: ResetPasswordState,
+  formData: FormData
+): Promise<ResetPasswordState> {
+  await requireAdmin();
+
+  const userId = String(formData.get("user_id") ?? "");
+  const password = String(formData.get("password") ?? "");
+
+  if (!userId) {
+    return { error: "Missing user id." };
+  }
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+
+  const serviceRole = createServiceRoleClient();
+  const { error } = await serviceRole.auth.admin.updateUserById(userId, {
+    password,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { error: null, success: true };
+}

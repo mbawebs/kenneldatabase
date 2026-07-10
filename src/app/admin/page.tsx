@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getCurrentUser, isAdmin } from "@/lib/supabase/auth";
 import { signOut } from "@/lib/supabase/actions";
 import { toggleKennelStatus } from "./actions";
 import CreateKennelForm from "./CreateKennelForm";
 import CreateUserForm from "./CreateUserForm";
+import ResetPasswordControl from "./ResetPasswordControl";
 
 export default async function AdminPage() {
   const user = await getCurrentUser();
@@ -31,6 +33,21 @@ export default async function AdminPage() {
     .from("kennels")
     .select("*")
     .order("created_at", { ascending: false });
+
+  const { data: kennelUserRows } = await supabase
+    .from("kennel_users")
+    .select("id, user_id, role, kennels(name, slug)")
+    .order("created_at", { ascending: false });
+
+  // Los correos viven en Supabase Auth, no en una tabla publica, asi
+  // que hace falta el cliente de service-role para leerlos (la key
+  // anon no tiene permiso). listUsers() trae hasta 50 por default —
+  // de sobra para el numero de dueños que maneja este directorio hoy.
+  const serviceRole = createServiceRoleClient();
+  const { data: authUsers } = await serviceRole.auth.admin.listUsers();
+  const emailByUserId = new Map(
+    (authUsers?.users ?? []).map((u) => [u.id, u.email ?? "(no email)"])
+  );
 
   return (
     <main className="min-h-screen bg-paper text-onlight dark:bg-ink dark:text-ink-text">
@@ -133,6 +150,55 @@ export default async function AdminPage() {
                       className="p-3 text-center text-onlight-dim dark:text-ink-text-dim"
                     >
                       No kennels yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="mb-4 font-display text-lg">
+            Kennel owners ({kennelUserRows?.length ?? 0})
+          </h2>
+          <div className="overflow-x-auto border border-saddle/20 dark:border-brass/20">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-saddle/20 bg-parchment font-mono text-[0.68rem] uppercase tracking-[0.1em] text-onlight-dim dark:border-brass/20 dark:bg-ink-2 dark:text-ink-text-dim">
+                <tr>
+                  <th className="p-3 font-medium">Email</th>
+                  <th className="p-3 font-medium">Kennel</th>
+                  <th className="p-3 font-medium">Role</th>
+                  <th className="p-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {(kennelUserRows ?? []).map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-t border-saddle/10 dark:border-brass/10"
+                  >
+                    <td className="p-3 font-medium">
+                      {emailByUserId.get(row.user_id) ?? "(unknown)"}
+                    </td>
+                    <td className="p-3 text-onlight-dim dark:text-ink-text-dim">
+                      {row.kennels?.[0]?.name ?? "—"}
+                    </td>
+                    <td className="p-3 text-onlight-dim dark:text-ink-text-dim">
+                      {row.role}
+                    </td>
+                    <td className="p-3 text-right">
+                      <ResetPasswordControl userId={row.user_id} />
+                    </td>
+                  </tr>
+                ))}
+                {(kennelUserRows ?? []).length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="p-3 text-center text-onlight-dim dark:text-ink-text-dim"
+                    >
+                      No kennel owners yet.
                     </td>
                   </tr>
                 )}
