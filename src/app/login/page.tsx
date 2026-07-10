@@ -6,6 +6,19 @@ import { login, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
 
+// Publica a proposito (NEXT_PUBLIC_*): es el correo al que un dueño
+// de kennel sin acceso (contraseña olvidada, cuenta sin vincular,
+// etc.) puede escribir. No hay recuperacion de contraseña por email
+// todavia, asi que esta es la unica salida para alguien sin sesion.
+const ADMIN_CONTACT_EMAIL = process.env.NEXT_PUBLIC_ADMIN_CONTACT_EMAIL;
+
+function buildContactMailto(email: string) {
+  const subject = "Kennel Database — Login help";
+  const body =
+    "Hi,\n\nI'm having trouble logging into my Kennel Database dashboard.\n\nKennel name: \nWhat's happening: ";
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(login, initialState);
   const [showPassword, setShowPassword] = useState(false);
@@ -99,6 +112,15 @@ export default function LoginPage() {
           >
             {isPending ? "Signing in..." : "Log in"}
           </button>
+
+          {ADMIN_CONTACT_EMAIL && (
+            <a
+              href={buildContactMailto(ADMIN_CONTACT_EMAIL)}
+              className="block text-center text-xs text-ink-text-dim underline decoration-ink-text-dim/40 underline-offset-2 transition-colors hover:text-brass hover:decoration-brass"
+            >
+              Can&apos;t log in? Contact administration
+            </a>
+          )}
         </form>
       </div>
     </main>
