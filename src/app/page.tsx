@@ -100,30 +100,27 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     .single();
   const settings: SiteSettings = settingsRow ?? EMPTY_SETTINGS;
 
+  const adminContactEmail = process.env.NEXT_PUBLIC_ADMIN_CONTACT_EMAIL;
+
   return (
     <>
-      {settings.top_banner_text && (
-        <TopBanner text={settings.top_banner_text} link={settings.top_banner_link} />
-      )}
-
-      <header className="border-b border-ink-3 bg-ink">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5 sm:px-10">
-          <span className="font-impact text-xl uppercase tracking-wide text-brass sm:text-2xl">
-            Kennel Database
-          </span>
-          <Link
-            href="/login"
-            className="rounded-full border border-ink-text-dim/40 px-3 py-1.5 font-body text-[0.65rem] font-bold uppercase tracking-widest text-ink-text-dim transition-colors hover:border-brass hover:text-brass"
-          >
-            Owner Login
-          </Link>
-        </div>
-      </header>
+      {/* Espacio vendible #1: franja superior. Interactiva cuando el
+          admin la configura desde /admin ("Visit the kennel of the
+          month" -> enlaza al criadero elegido); si no, invita a
+          anunciarse ahi en vez de dejar un hueco vacio que nadie
+          notaria que existe. */}
+      <TopBanner
+        text={settings.top_banner_text}
+        link={settings.top_banner_link}
+        adminContactEmail={adminContactEmail}
+      />
 
       {/* Hero: azul (marca de la plataforma en si, no la de un kennel
           especifico) con el nombre grande al centro. Si hay una imagen
           subida desde /admin se usa de fondo con un degradado azul
-          encima para contraste; si no, un degradado azul solo. */}
+          encima para contraste; si no, un degradado azul solo.
+          "Owner Login" vive aqui adentro (esquina superior derecha) —
+          ya no hay una barra de header aparte. */}
       <div className="relative overflow-hidden">
         {settings.hero_image_url ? (
           <>
@@ -138,7 +135,15 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-[#1e5490] via-[#123a68] to-[#0a1a2f]" />
         )}
-        <div className="relative mx-auto max-w-4xl px-6 py-24 text-center sm:py-32">
+        <div className="relative flex justify-end px-6 pt-6 sm:px-10">
+          <Link
+            href="/login"
+            className="rounded-full border border-white/40 px-3 py-1.5 font-body text-[0.65rem] font-bold uppercase tracking-widest text-white/80 transition-colors hover:border-white hover:text-white"
+          >
+            Owner Login
+          </Link>
+        </div>
+        <div className="relative mx-auto max-w-4xl px-6 pb-24 pt-6 text-center sm:pb-32">
           <h1 className="font-impact text-6xl uppercase leading-[0.9] text-white [text-shadow:0_6px_30px_rgba(0,0,0,0.65)] sm:text-8xl">
             Kennel Database
           </h1>
@@ -158,6 +163,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           <SideBanner
             imageUrl={settings.banner_left_image_url}
             link={settings.banner_left_link}
+            adminContactEmail={adminContactEmail}
           />
 
           <div className="mx-auto min-w-0 max-w-5xl flex-1">
@@ -247,6 +253,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           <SideBanner
             imageUrl={settings.banner_right_image_url}
             link={settings.banner_right_link}
+            adminContactEmail={adminContactEmail}
           />
         </div>
       </main>
@@ -254,55 +261,104 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   );
 }
 
-function TopBanner({ text, link }: { text: string; link: string | null }) {
+function buildAdvertiseMailto(email: string, placement: string) {
+  const subject = `Kennel Database — Advertising inquiry (${placement})`;
+  const body = `Hi,\n\nI'm interested in advertising in the ${placement} on the Kennel Database homepage.\n\n`;
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+// Espacio vendible #1. Si el admin ya lo configuro desde /admin, es
+// un texto clickeable (ej. "Visit the kennel of the month" -> ese
+// criadero). Si no, invita a anunciarse ahi mismo en vez de dejar la
+// franja vacia — asi el espacio se "vende solo" con nada mas verlo.
+function TopBanner({
+  text,
+  link,
+  adminContactEmail,
+}: {
+  text: string | null;
+  link: string | null;
+  adminContactEmail: string | undefined;
+}) {
   const className =
     "block bg-brass px-4 py-2 text-center font-body text-xs font-bold uppercase tracking-wide text-ink sm:text-sm";
 
-  if (link) {
-    return (
-      <a
-        href={link}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        className={`${className} transition-colors hover:bg-brass-dim`}
-      >
-        {text}
-      </a>
-    );
+  if (text) {
+    if (link) {
+      return (
+        <a
+          href={link}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className={`${className} transition-colors hover:bg-brass-dim`}
+        >
+          {text}
+        </a>
+      );
+    }
+    return <p className={className}>{text}</p>;
   }
 
-  return <p className={className}>{text}</p>;
+  if (!adminContactEmail) return null;
+
+  return (
+    <a
+      href={buildAdvertiseMailto(adminContactEmail, "top banner")}
+      className={`${className} transition-colors hover:bg-brass-dim`}
+    >
+      Advertise in this space — Contact us
+    </a>
+  );
 }
 
-// Solo se renderiza si el admin subio una imagen para ese lado desde
-// /admin — sin imagen, no deja un hueco vacio en el layout. En
-// pantallas angostas se oculta por completo (xl:block): apretaria
-// demasiado el buscador y las tarjetas.
+// Espacios vendibles #2 y #3. Si el admin subio una imagen desde
+// /admin, es la imagen (clickeable si tiene link). Si no, un
+// recuadro tipo "Advertise Here" que tambien invita a contactar — en
+// vez de un hueco vacio que nadie notaria que existe. En pantallas
+// angostas se oculta por completo (xl:block): apretaria demasiado el
+// buscador y las tarjetas.
 function SideBanner({
   imageUrl,
   link,
+  adminContactEmail,
 }: {
   imageUrl: string | null;
   link: string | null;
+  adminContactEmail: string | undefined;
 }) {
-  if (!imageUrl) return null;
+  if (imageUrl) {
+    const image = (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={imageUrl} alt="Advertisement" className="w-full rounded-lg object-cover" />
+    );
+    return (
+      <div className="hidden shrink-0 xl:block xl:w-[200px]">
+        <div className="sticky top-8">
+          {link ? (
+            <a href={link} target="_blank" rel="noopener noreferrer sponsored">
+              {image}
+            </a>
+          ) : (
+            image
+          )}
+        </div>
+      </div>
+    );
+  }
 
-  const image = (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={imageUrl} alt="Advertisement" className="w-full rounded-lg object-cover" />
-  );
+  if (!adminContactEmail) return null;
 
   return (
     <div className="hidden shrink-0 xl:block xl:w-[200px]">
-      <div className="sticky top-8">
-        {link ? (
-          <a href={link} target="_blank" rel="noopener noreferrer sponsored">
-            {image}
-          </a>
-        ) : (
-          image
-        )}
-      </div>
+      <a
+        href={buildAdvertiseMailto(adminContactEmail, "side banner")}
+        className="sticky top-8 flex aspect-[1/3] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-saddle/25 bg-parchment/40 p-4 text-center transition-colors hover:border-saddle"
+      >
+        <span className="font-impact text-lg uppercase leading-tight text-saddle">
+          Advertise Here
+        </span>
+        <span className="text-xs text-onlight-dim">Contact us</span>
+      </a>
     </div>
   );
 }
