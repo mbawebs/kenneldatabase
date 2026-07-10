@@ -331,11 +331,11 @@ function CardRow({ dogs }: { dogs: Dog[] }) {
   );
 }
 
-// En movil, cada seccion es su propio carrusel horizontal (con
-// snap-scroll y una pista de que hay mas si aplica) en vez de una
-// pila vertical continua — asi se nota donde termina una seccion y
-// empieza la siguiente. En escritorio (sm:) se comporta igual que
-// antes: las tarjetas se acomodan en filas centradas, sin scroll.
+// Cada seccion es su propio carrusel horizontal (con snap-scroll y
+// una pista de que hay mas si aplica), tanto en movil como en
+// escritorio: con muchas fichas (ej. 20 producciones) se ve mucho
+// mas limpio deslizar hacia los lados que amontonar todo en un grid
+// que se hace larguisimo verticalmente.
 function CarouselRow({
   count,
   children,
@@ -346,14 +346,14 @@ function CarouselRow({
   return (
     <div className="relative">
       <div
-        className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
+        className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
         style={{ scrollPaddingInline: "1.5rem" }}
       >
         {children}
       </div>
       {count > 1 && (
         <div
-          className="pointer-events-none absolute inset-y-0 right-0 flex w-14 items-center justify-end bg-gradient-to-l from-ink via-ink/70 to-transparent sm:hidden"
+          className="pointer-events-none absolute inset-y-0 right-0 flex w-14 items-center justify-end bg-gradient-to-l from-ink via-ink/70 to-transparent sm:w-20"
           aria-hidden="true"
         >
           <svg
@@ -417,7 +417,7 @@ function DogCard({ dog }: { dog: Dog }) {
   ].filter(Boolean) as { label: string; value: string }[];
 
   return (
-    <div className="w-[78vw] max-w-[300px] shrink-0 snap-start flex flex-col bg-ink-2 sm:w-[440px] sm:max-w-none sm:shrink sm:flex-row">
+    <div className="w-[78vw] max-w-[300px] shrink-0 snap-start flex flex-col bg-ink-2 sm:w-[440px] sm:max-w-none sm:flex-row">
       <div className="w-full sm:w-2/5 sm:shrink-0">
         <div className="aspect-video w-full bg-ink-3 sm:aspect-[3/4]">
           {photo ? (
@@ -496,7 +496,7 @@ function BreedingCard({ breeding }: { breeding: Breeding }) {
   ].filter(Boolean) as { label: string; value: string }[];
 
   return (
-    <div className="w-[78vw] max-w-[300px] shrink-0 snap-start flex flex-col bg-ink-2 sm:w-[440px] sm:max-w-none sm:shrink sm:flex-row">
+    <div className="w-[78vw] max-w-[300px] shrink-0 snap-start flex flex-col bg-ink-2 sm:w-[440px] sm:max-w-none sm:flex-row">
       <div className="w-full sm:w-2/5 sm:shrink-0">
         <div className="aspect-video w-full bg-ink-3 sm:aspect-[3/4]">
           {photo ? (
