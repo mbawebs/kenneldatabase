@@ -11,6 +11,8 @@ export const KENNEL_PLANS: KennelPlan[] = ["demo", "dashboard", "multipage"];
 
 export type SocialPlatform =
   | "whatsapp"
+  | "phone"
+  | "email"
   | "instagram"
   | "facebook"
   | "tiktok"
@@ -29,6 +31,11 @@ export const SOCIAL_PLATFORMS: {
   placeholder: string;
 }[] = [
   { value: "whatsapp", label: "WhatsApp", placeholder: "+1 555 123 4567" },
+  // No todos usan WhatsApp (sobre todo en EE. UU.) — estas dos dejan
+  // agregar una llamada directa o un correo como link mas, aparte del
+  // telefono/email unico de "Direct contact".
+  { value: "phone", label: "Phone (call)", placeholder: "+1 555 123 4567" },
+  { value: "email", label: "Email", placeholder: "you@example.com" },
   { value: "instagram", label: "Instagram", placeholder: "@yourkennel" },
   { value: "facebook", label: "Facebook", placeholder: "Page username or link" },
   { value: "tiktok", label: "TikTok", placeholder: "@yourkennel" },

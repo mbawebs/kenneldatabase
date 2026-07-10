@@ -11,6 +11,14 @@ export function buildSocialHref(link: SocialLink): string {
     return `https://wa.me/${digits}`;
   }
 
+  if (link.platform === "phone") {
+    return `tel:${value.replace(/[^\d+]/g, "")}`;
+  }
+
+  if (link.platform === "email") {
+    return `mailto:${value}`;
+  }
+
   if (value.startsWith("http://") || value.startsWith("https://")) {
     return value;
   }
