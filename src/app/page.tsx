@@ -10,6 +10,23 @@ interface DirectoryKennel {
   city: string | null;
 }
 
+// Cada criadero escribe la raza a su manera ("Mini Bully", "XL Bully",
+// "Designer Frenchie", "Big Rope Frenchie"...) — de raza libre, sin
+// catalogo fijo. En vez de mostrar cada variante suelta en el filtro,
+// se agrupan por palabra clave bajo un nombre canonico, para que
+// buscar "American Bully" o "French Bulldog" encuentre todas sus
+// variantes sin importar como las haya tecleado cada quien.
+const BREED_GROUPS: { canonical: string; keywords: string[] }[] = [
+  { canonical: "American Bully", keywords: ["bully"] },
+  { canonical: "French Bulldog", keywords: ["frenchie", "french bulldog"] },
+];
+
+function canonicalizeBreed(breed: string): string {
+  const lower = breed.toLowerCase();
+  const group = BREED_GROUPS.find((g) => g.keywords.some((kw) => lower.includes(kw)));
+  return group?.canonical ?? breed;
+}
+
 export default async function HomePage({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
   const countryFilter = firstValue(params.country);
@@ -46,7 +63,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     };
     entry.count += 1;
     const breed = row.breed?.trim();
-    if (breed) entry.breeds.add(breed);
+    if (breed) entry.breeds.add(canonicalizeBreed(breed));
     dogsByKennel.set(row.kennel_id, entry);
   }
 
