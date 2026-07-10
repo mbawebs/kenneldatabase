@@ -314,7 +314,7 @@ export default function KennelLandingView({
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="mb-7 border-b-2 border-ink-3 pb-4">
-      <span className="font-impact text-3xl uppercase leading-none text-ink-text sm:text-5xl">
+      <span className="font-impact text-4xl uppercase leading-none text-[var(--color-accent)] sm:text-6xl">
         {children}
       </span>
     </h2>
