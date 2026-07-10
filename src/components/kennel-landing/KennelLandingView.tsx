@@ -450,9 +450,11 @@ function DogCard({ dog }: { dog: Dog }) {
           <p className="font-body text-[0.65rem] font-bold uppercase tracking-[0.15em] text-ink-text-dim/50">
             Bloodline File
           </p>
-          <p className="font-impact text-3xl uppercase leading-[0.95] text-ink-text">
-            {dog.name}
-          </p>
+          {dog.name && (
+            <p className="font-impact text-3xl uppercase leading-[0.95] text-ink-text">
+              {dog.name}
+            </p>
+          )}
           {specRows.length > 0 && (
             <div className="mt-3 space-y-1.5 border-t border-ink-3 pt-3">
               {specRows.map((row) => (

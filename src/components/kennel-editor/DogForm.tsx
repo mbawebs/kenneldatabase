@@ -118,12 +118,11 @@ export default function DogForm({
 
       <div className="space-y-1.5">
         <label className={labelClass} htmlFor={fieldId("name")}>
-          Name
+          Name (optional)
         </label>
         <input
           id={fieldId("name")}
           name="name"
-          required
           value={draft.name}
           onChange={(e) => update("name", e.target.value)}
           className={inputClass}

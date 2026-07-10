@@ -231,7 +231,9 @@ export default function DashboardApp({
     const section = DOG_SECTIONS.find((s) => s.key === view.sectionKey);
     if (section) {
       const dog = view.dogId ? dogs.find((d) => d.id === view.dogId) : undefined;
-      title = dog ? `Edit ${dog.name}` : `Add to ${section.label}`;
+      title = dog
+        ? `Edit ${dog.name || "untitled dog"}`
+        : `Add to ${section.label}`;
       const backToSection = () => {
         setDraftDog(null);
         setView({ screen: "section", sectionKey: section.key });
@@ -541,13 +543,13 @@ function SectionListScreen({
       renderRow={(dog) => (
         <ItemRow
           photo={dog.photos?.[0]}
-          title={dog.name}
+          title={dog.name || "Untitled dog"}
           subtitle={[dog.breed, dog.color].filter(Boolean).join(" · ")}
           onEdit={() => onEdit(dog.id)}
           deleteAction={deleteDog}
           deleteFieldName="dog_id"
           deleteFieldValue={dog.id}
-          confirmMessage={`Delete ${dog.name}? This can't be undone.`}
+          confirmMessage={`Delete ${dog.name || "this dog"}? This can't be undone.`}
         />
       )}
     />

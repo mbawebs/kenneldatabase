@@ -164,9 +164,6 @@ function parseDogForm(
   const name = String(formData.get("name") ?? "").trim();
   const category = String(formData.get("category") ?? "");
 
-  if (!name) {
-    return { error: "Name is required." };
-  }
   if (!DOG_CATEGORIES.includes(category as DogCategory)) {
     return { error: "Invalid category." };
   }
