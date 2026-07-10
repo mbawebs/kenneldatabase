@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const BUCKET = "kennel-media";
@@ -46,14 +46,30 @@ export default function ImageUploadField({
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const dragState = useRef<{ startY: number; startPosition: number } | null>(
     null
   );
   const canReposition =
     aspect === "wide" && Boolean(value) && onPositionChange !== undefined;
 
+  // Se leen por ref (no por closure) dentro del listener nativo de abajo,
+  // para no tener que desmontar/remontar los listeners de touch cada vez
+  // que la posicion cambia a medio arrastre.
+  const positionRef = useRef(position ?? 0);
+  useEffect(() => {
+    positionRef.current = position ?? 0;
+  }, [position]);
+  const onPositionChangeRef = useRef(onPositionChange);
+  useEffect(() => {
+    onPositionChangeRef.current = onPositionChange;
+  }, [onPositionChange]);
+
+  // Mouse (desktop): un solo puntero, funciona bien tal cual. En touch
+  // (celular), un solo dedo se ignora aqui a proposito — lo maneja el
+  // effect de abajo, que solo reacciona a DOS dedos.
   function handleRepositionPointerDown(e: React.PointerEvent<HTMLImageElement>) {
-    if (!canReposition) return;
+    if (!canReposition || e.pointerType !== "mouse") return;
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     dragState.current = { startY: e.clientY, startPosition: position ?? 0 };
@@ -61,6 +77,7 @@ export default function ImageUploadField({
   }
 
   function handleRepositionPointerMove(e: React.PointerEvent<HTMLImageElement>) {
+    if (e.pointerType !== "mouse") return;
     if (!dragState.current || !frameRef.current || !onPositionChange) return;
     const frameHeight = frameRef.current.getBoundingClientRect().height;
     const deltaPercent =
@@ -72,10 +89,75 @@ export default function ImageUploadField({
     onPositionChange(Math.round(next));
   }
 
-  function handleRepositionPointerUp() {
+  function handleRepositionPointerUp(e: React.PointerEvent<HTMLImageElement>) {
+    if (e.pointerType !== "mouse") return;
     dragState.current = null;
     setIsRepositioning(false);
   }
+
+  // En movil, arrastrar con UN dedo (sobre todo hacia abajo, cerca del
+  // borde superior de la pagina) lo interceptaba el gesto nativo de
+  // "pull to refresh" del navegador — touch-action: none no lo evitaba
+  // de forma confiable en todos los navegadores. Con DOS dedos ese
+  // conflicto no existe (ningun navegador usa un gesto de 2 dedos para
+  // refrescar o hacer scroll), asi que el reposicionamiento en touch
+  // solo se activa con exactamente 2 toques. Se usan listeners nativos
+  // (no los onTouch* sinteticos de React) porque React los registra
+  // como passive por defecto, lo que impediria que preventDefault()
+  // realmente bloquee el pinch-zoom del navegador durante el gesto.
+  useEffect(() => {
+    if (!canReposition) return;
+    const img = imageRef.current;
+    if (!img) return;
+
+    function averageY(touches: TouchList) {
+      let sum = 0;
+      for (let i = 0; i < touches.length; i++) sum += touches[i].clientY;
+      return sum / touches.length;
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      dragState.current = {
+        startY: averageY(e.touches),
+        startPosition: positionRef.current,
+      };
+      setIsRepositioning(true);
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!dragState.current || e.touches.length !== 2 || !frameRef.current) {
+        return;
+      }
+      e.preventDefault();
+      const frameHeight = frameRef.current.getBoundingClientRect().height;
+      const deltaPercent =
+        ((averageY(e.touches) - dragState.current.startY) / frameHeight) * 100;
+      const next = Math.min(
+        100,
+        Math.max(0, dragState.current.startPosition - deltaPercent)
+      );
+      onPositionChangeRef.current?.(Math.round(next));
+    }
+
+    function onTouchEnd() {
+      dragState.current = null;
+      setIsRepositioning(false);
+    }
+
+    img.addEventListener("touchstart", onTouchStart, { passive: false });
+    img.addEventListener("touchmove", onTouchMove, { passive: false });
+    img.addEventListener("touchend", onTouchEnd);
+    img.addEventListener("touchcancel", onTouchEnd);
+
+    return () => {
+      img.removeEventListener("touchstart", onTouchStart);
+      img.removeEventListener("touchmove", onTouchMove);
+      img.removeEventListener("touchend", onTouchEnd);
+      img.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [canReposition]);
 
   async function uploadFile(file: File) {
     setStatus("uploading");
@@ -157,6 +239,7 @@ export default function ImageUploadField({
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              ref={imageRef}
               src={value}
               alt=""
               draggable={false}
@@ -172,15 +255,16 @@ export default function ImageUploadField({
               className={`h-full w-full object-cover ${
                 canReposition
                   ? isRepositioning
-                    ? "cursor-grabbing touch-none"
-                    : "cursor-grab touch-none"
+                    ? "cursor-grabbing touch-pan-y"
+                    : "cursor-grab touch-pan-y"
                   : ""
               }`}
             />
             {canReposition && (
               <>
-                <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-2.5 py-1 text-[0.65rem] font-medium text-white">
-                  Drag photo to reposition
+                <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-2.5 py-1 text-center text-[0.65rem] font-medium text-white">
+                  <span className="hidden sm:inline">Drag photo to reposition</span>
+                  <span className="sm:hidden">Drag with two fingers to reposition</span>
                 </span>
                 <button
                   type="button"
