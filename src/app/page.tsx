@@ -16,12 +16,59 @@ interface DirectoryKennel {
 // Cada criadero escribe la raza a su manera ("Mini Bully", "XL Bully",
 // "Designer Frenchie", "Big Rope Frenchie"...) — de raza libre, sin
 // catalogo fijo. En vez de mostrar cada variante suelta en el filtro,
-// se agrupan por palabra clave bajo un nombre canonico, para que
-// buscar "American Bully" o "French Bulldog" encuentre todas sus
-// variantes sin importar como las haya tecleado cada quien.
+// se agrupan por palabra clave bajo un nombre canonico. El orden
+// importa: "Fluffy Frenchie" se revisa antes que "French Bulldog"
+// porque sus variantes ("Big Rope Fluffy Frenchie"...) tambien
+// contienen "frenchie" — si no, quedarian atrapadas en el grupo
+// mas amplio antes de llegar al mas especifico.
 const BREED_GROUPS: { canonical: string; keywords: string[] }[] = [
-  { canonical: "American Bully", keywords: ["bully"] },
-  { canonical: "French Bulldog", keywords: ["frenchie", "french bulldog"] },
+  {
+    canonical: "Fluffy Frenchie",
+    keywords: [
+      "fluffy frenchie",
+      "big rope fluffy frenchie",
+      "merle fluffy frenchie",
+      "big rope fluffy french bulldog",
+    ],
+  },
+  {
+    canonical: "French Bulldog",
+    keywords: [
+      "frenchie",
+      "frenchies",
+      "big rope frenchie",
+      "extreme frenchie",
+      "exotic frenchie",
+      "merle frenchie",
+      "big rope french bulldog",
+      "exotic french bulldog",
+      "merle french bulldog",
+    ],
+  },
+  {
+    canonical: "XL Bully",
+    keywords: [
+      "xxl bully",
+      "xxxl bully",
+      "xl pitbull",
+      "xl american bully",
+      "american bully xl",
+    ],
+  },
+  {
+    canonical: "Exotic Bully",
+    keywords: [
+      "designer bully",
+      "mini bully",
+      "miniature bully",
+      "nano bully",
+      "merle bully",
+    ],
+  },
+  {
+    canonical: "American Bully",
+    keywords: ["pocket bully", "standard bully", "extreme bully"],
+  },
 ];
 
 function canonicalizeBreed(breed: string): string {
