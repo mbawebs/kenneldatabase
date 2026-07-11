@@ -49,6 +49,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
   const countryFilter = firstValue(params.country);
   const breedFilter = firstValue(params.breed);
+  const sortParam = firstValue(params.sort);
 
   const supabase = await createClient();
 
@@ -98,15 +99,35 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     return true;
   });
 
-  const hasFilters = Boolean(countryFilter || breedFilter);
+  const hasFilters = Boolean(countryFilter || breedFilter || sortParam);
 
-  // Paginado simple: cambiar de filtro siempre resetea a la pagina 1
-  // (el form GET solo manda country/breed, "page" queda fuera del
-  // querystring sin necesidad de manejarlo aparte).
-  const totalPages = Math.max(1, Math.ceil(filteredKennels.length / PAGE_SIZE));
+  // "Relevance" (el default) no es un solo numero: se pondera perfil
+  // mas completo (mas perros publicados) primero, luego popularidad
+  // (mas visitas), con el nombre como ultimo desempate. "Most visited"
+  // y "A-Z" son ordenes directos, sin ambiguedad.
+  const sortedKennels = [...filteredKennels].sort((a, b) => {
+    if (sortParam === "az") {
+      return a.name.localeCompare(b.name);
+    }
+    if (sortParam === "visits") {
+      return b.view_count - a.view_count || a.name.localeCompare(b.name);
+    }
+    const aDogs = dogsByKennel.get(a.id)?.count ?? 0;
+    const bDogs = dogsByKennel.get(b.id)?.count ?? 0;
+    return (
+      bDogs - aDogs ||
+      b.view_count - a.view_count ||
+      a.name.localeCompare(b.name)
+    );
+  });
+
+  // Paginado simple: cambiar de filtro/orden siempre resetea a la
+  // pagina 1 (el form GET solo manda country/breed/sort, "page" queda
+  // fuera del querystring sin necesidad de manejarlo aparte).
+  const totalPages = Math.max(1, Math.ceil(sortedKennels.length / PAGE_SIZE));
   const requestedPage = Number(firstValue(params.page)) || 1;
   const currentPage = Math.min(Math.max(1, requestedPage), totalPages);
-  const pageKennels = filteredKennels.slice(
+  const pageKennels = sortedKennels.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
@@ -241,6 +262,25 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
                 </select>
               </div>
 
+              <div className="min-w-[180px] flex-1 space-y-1.5">
+                <label
+                  htmlFor="sort"
+                  className="block font-body text-[0.65rem] font-bold uppercase tracking-widest text-onlight-dim"
+                >
+                  Sort by
+                </label>
+                <select
+                  id="sort"
+                  name="sort"
+                  defaultValue={sortParam}
+                  className="w-full rounded-lg border border-saddle/25 bg-paper px-4 py-2.5 text-sm text-onlight outline-none transition-colors focus:border-saddle"
+                >
+                  <option value="">Relevance</option>
+                  <option value="visits">Most visited</option>
+                  <option value="az">A-Z</option>
+                </select>
+              </div>
+
               <button
                 type="submit"
                 className="rounded-full border border-saddle bg-saddle px-6 py-2.5 font-body text-sm font-bold uppercase tracking-wide text-paper transition-colors hover:bg-saddle-2"
@@ -280,6 +320,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
               totalPages={totalPages}
               countryFilter={countryFilter}
               breedFilter={breedFilter}
+              sortParam={sortParam}
             />
 
             <MobileBanner
@@ -459,11 +500,13 @@ function Pagination({
   totalPages,
   countryFilter,
   breedFilter,
+  sortParam,
 }: {
   currentPage: number;
   totalPages: number;
   countryFilter: string;
   breedFilter: string;
+  sortParam: string;
 }) {
   if (totalPages <= 1) return null;
 
@@ -471,6 +514,7 @@ function Pagination({
     const qs = new URLSearchParams();
     if (countryFilter) qs.set("country", countryFilter);
     if (breedFilter) qs.set("breed", breedFilter);
+    if (sortParam) qs.set("sort", sortParam);
     if (page > 1) qs.set("page", String(page));
     const query = qs.toString();
     return query ? `/?${query}` : "/";
