@@ -15,6 +15,10 @@ export function buildSocialHref(link: SocialLink): string {
     return `tel:${value.replace(/[^\d+]/g, "")}`;
   }
 
+  if (link.platform === "phone_text") {
+    return `sms:${value.replace(/[^\d+]/g, "")}`;
+  }
+
   if (link.platform === "email") {
     return `mailto:${value}`;
   }

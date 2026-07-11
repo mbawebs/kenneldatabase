@@ -44,7 +44,8 @@ export default function KennelLandingView({
       .filter((link) => link.value.trim())
       .map((link) => ({
         label:
-          SOCIAL_PLATFORMS.find((p) => p.value === link.platform)?.label ??
+          (link.platform === "custom" && link.label?.trim()) ||
+          SOCIAL_PLATFORMS.find((p) => p.value === link.platform)?.label ||
           link.platform,
         href: buildSocialHref(link),
         platform: link.platform,

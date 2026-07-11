@@ -75,8 +75,16 @@ export async function updateKennel(
   const validPlatforms = SOCIAL_PLATFORMS.map((p) => p.value);
   const platforms = formData.getAll("social_platform").map(String);
   const values = formData.getAll("social_value").map(String);
+  const labels = formData.getAll("social_label").map(String);
   const socialLinks: SocialLink[] = platforms
-    .map((platform, i) => ({ platform, value: values[i]?.trim() ?? "" }))
+    .map((platform, i) => {
+      const label = labels[i]?.trim();
+      return {
+        platform,
+        value: values[i]?.trim() ?? "",
+        ...(platform === "custom" && label ? { label } : {}),
+      };
+    })
     .filter(
       (link): link is SocialLink =>
         link.value !== "" &&

@@ -12,6 +12,7 @@ export const KENNEL_PLANS: KennelPlan[] = ["demo", "dashboard", "multipage"];
 export type SocialPlatform =
   | "whatsapp"
   | "phone"
+  | "phone_text"
   | "email"
   | "instagram"
   | "facebook"
@@ -25,6 +26,11 @@ export type SocialPlatform =
 export interface SocialLink {
   platform: SocialPlatform;
   value: string;
+  // Solo se usa (y solo se muestra el campo en el editor) cuando
+  // platform === "custom": el nombre que el dueño le pone a su link
+  // ("Supplements", "Merch store"...) en vez de mostrar siempre el
+  // generico "Custom link".
+  label?: string;
 }
 
 export const SOCIAL_PLATFORMS: {
@@ -37,6 +43,7 @@ export const SOCIAL_PLATFORMS: {
   // agregar una llamada directa o un correo como link mas, aparte del
   // telefono/email unico de "Direct contact".
   { value: "phone", label: "Phone (call)", placeholder: "+1 555 123 4567" },
+  { value: "phone_text", label: "Phone (text only)", placeholder: "+1 555 123 4567" },
   { value: "email", label: "Email", placeholder: "you@example.com" },
   { value: "instagram", label: "Instagram", placeholder: "@yourkennel" },
   { value: "facebook", label: "Facebook", placeholder: "Page username or link" },

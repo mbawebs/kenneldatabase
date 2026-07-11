@@ -70,6 +70,15 @@ export default function SocialLinksField({
                 <TrashIcon className="h-4 w-4" />
               </button>
             </div>
+            {link.platform === "custom" && (
+              <input
+                value={link.label ?? ""}
+                onChange={(e) => updateLink(index, { label: e.target.value })}
+                placeholder="Name shown to visitors, e.g. Supplements"
+                className={inputClass}
+                aria-label="Custom link name"
+              />
+            )}
             <input
               value={link.value}
               onChange={(e) => updateLink(index, { value: e.target.value })}
@@ -94,6 +103,7 @@ export default function SocialLinksField({
         <span key={`hidden-${index}`}>
           <input type="hidden" name="social_platform" value={link.platform} />
           <input type="hidden" name="social_value" value={link.value} />
+          <input type="hidden" name="social_label" value={link.label ?? ""} />
         </span>
       ))}
     </div>
