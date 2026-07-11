@@ -36,6 +36,11 @@ export function buildSocialHref(link: SocialLink): string {
     case "x":
       return `https://x.com/${handle}`;
     case "website":
+    case "spotify":
+    case "custom":
+      // Sin convencion de "@usuario" para estos — se espera que
+      // peguen el link completo (ya cubierto arriba); esto solo
+      // rescata el caso de que lo hayan pegado sin "https://".
       return `https://${handle}`;
     default:
       return value;

@@ -18,7 +18,9 @@ export type SocialPlatform =
   | "tiktok"
   | "youtube"
   | "x"
-  | "website";
+  | "spotify"
+  | "website"
+  | "custom";
 
 export interface SocialLink {
   platform: SocialPlatform;
@@ -41,7 +43,12 @@ export const SOCIAL_PLATFORMS: {
   { value: "tiktok", label: "TikTok", placeholder: "@yourkennel" },
   { value: "youtube", label: "YouTube", placeholder: "Channel link" },
   { value: "x", label: "X (Twitter)", placeholder: "@yourkennel" },
+  { value: "spotify", label: "Spotify", placeholder: "Paste your Spotify link" },
   { value: "website", label: "Website", placeholder: "https://yourkennel.com" },
+  // Para cualquier otro link que no encaje en las opciones de arriba
+  // (linktree, pagina de reservas, etc.) — igual que Website pero con
+  // su propia etiqueta, para poder agregar mas de uno.
+  { value: "custom", label: "Custom link", placeholder: "https://..." },
 ];
 
 export interface Kennel {

@@ -85,11 +85,30 @@ export function SocialIcon({
       );
     case "x":
       return base(<path d="M4 4l16 16M20 4L4 20" />, className);
+    case "spotify":
+      return base(
+        <>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M7 10.3c3-1 7-.6 9.3.8" />
+          <path d="M7.5 13.2c2.5-.8 5.8-.5 7.8.7" />
+          <path d="M8 16c2-.6 4.5-.4 6 .5" />
+        </>,
+        className
+      );
     case "website":
       return base(
         <>
           <circle cx="12" cy="12" r="9" />
           <path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18" />
+        </>,
+        className
+      );
+    case "custom":
+      return base(
+        <>
+          <path d="M9.5 14.5l5-5" />
+          <path d="M13 6.5l1.4-1.4a3.3 3.3 0 0 1 4.7 4.7L17.7 11" />
+          <path d="M11 17.5l-1.4 1.4a3.3 3.3 0 0 1-4.7-4.7L6.3 13" />
         </>,
         className
       );
