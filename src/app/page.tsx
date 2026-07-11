@@ -16,11 +16,20 @@ interface DirectoryKennel {
 // Cada criadero escribe la raza a su manera ("Mini Bully", "XL Bully",
 // "Designer Frenchie", "Big Rope Frenchie"...) — de raza libre, sin
 // catalogo fijo. En vez de mostrar cada variante suelta en el filtro,
-// se agrupan por palabra clave bajo un nombre canonico. El orden
-// importa: "Fluffy Frenchie" se revisa antes que "French Bulldog"
-// porque sus variantes ("Big Rope Fluffy Frenchie"...) tambien
-// contienen "frenchie" — si no, quedarian atrapadas en el grupo
-// mas amplio antes de llegar al mas especifico.
+// se agrupan por palabra clave bajo un nombre canonico. Para bullies
+// solo deben quedar dos opciones visibles: "American Bully" (todo lo
+// grande/estandar: pocket, standard, extreme, XL, XXL...) y "Exotic
+// Bully" (todo lo chico/enano: mini, micro, nano, designer, merle).
+// "American Bully" trae ademas un ultimo keyword generico ("bully")
+// que actua de red de seguridad: cualquier variante nueva que nadie
+// prevea aqui pero traiga "bully" en el nombre cae ahi por default,
+// en vez de aparecer como su propia raza suelta en el filtro.
+//
+// El orden importa: los grupos mas especificos van primero (Fluffy
+// Frenchie antes que French Bulldog, Exotic Bully antes que American
+// Bully) porque sus variantes tambien contienen la palabra clave del
+// grupo mas amplio — si no, quedarian atrapadas ahi antes de llegar
+// al grupo correcto.
 const BREED_GROUPS: { canonical: string; keywords: string[] }[] = [
   {
     canonical: "Fluffy Frenchie",
@@ -46,33 +55,39 @@ const BREED_GROUPS: { canonical: string; keywords: string[] }[] = [
     ],
   },
   {
-    canonical: "XL Bully",
-    keywords: [
-      "xxl bully",
-      "xxxl bully",
-      "xl pitbull",
-      "xl american bully",
-      "american bully xl",
-    ],
-  },
-  {
     canonical: "Exotic Bully",
     keywords: [
+      "exotic bully",
       "designer bully",
       "mini bully",
       "miniature bully",
+      "mini american bully",
+      "micro bully",
       "nano bully",
       "merle bully",
     ],
   },
   {
     canonical: "American Bully",
-    keywords: ["pocket bully", "standard bully", "extreme bully"],
+    keywords: [
+      "pocket bully",
+      "standard bully",
+      "extreme bully",
+      "xxl bully",
+      "xxxl bully",
+      "xl pitbull",
+      "xl american bully",
+      "american bully xl",
+      "bully",
+    ],
   },
 ];
 
 function canonicalizeBreed(breed: string): string {
-  const lower = breed.toLowerCase();
+  // Colapsa espacios dobles/triples ("Exotic  Bully" con dos
+  // espacios) antes de comparar, para que un typo de espaciado no
+  // haga que una variante se quede fuera de su grupo.
+  const lower = breed.toLowerCase().trim().replace(/\s+/g, " ");
   const group = BREED_GROUPS.find((g) => g.keywords.some((kw) => lower.includes(kw)));
   return group?.canonical ?? breed;
 }
