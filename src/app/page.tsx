@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import FilterForm from "./FilterForm";
 import type { SiteSettings } from "@/lib/supabase/types";
 
 interface DirectoryKennel {
@@ -214,88 +215,14 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
               className="mb-6"
             />
 
-            <form
-              method="GET"
-              className="flex flex-wrap items-end gap-4 border-b border-saddle/15 pb-6"
-            >
-              <div className="min-w-[180px] flex-1 space-y-1.5">
-                <label
-                  htmlFor="country"
-                  className="block font-body text-[0.65rem] font-bold uppercase tracking-widest text-onlight-dim"
-                >
-                  Country
-                </label>
-                <select
-                  id="country"
-                  name="country"
-                  defaultValue={countryFilter}
-                  className="w-full rounded-lg border border-saddle/25 bg-paper px-4 py-2.5 text-sm text-onlight outline-none transition-colors focus:border-saddle"
-                >
-                  <option value="">All countries</option>
-                  {countries.map((country) => (
-                    <option key={country} value={country}>
-                      {country}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="min-w-[180px] flex-1 space-y-1.5">
-                <label
-                  htmlFor="breed"
-                  className="block font-body text-[0.65rem] font-bold uppercase tracking-widest text-onlight-dim"
-                >
-                  Breed
-                </label>
-                <select
-                  id="breed"
-                  name="breed"
-                  defaultValue={breedFilter}
-                  className="w-full rounded-lg border border-saddle/25 bg-paper px-4 py-2.5 text-sm text-onlight outline-none transition-colors focus:border-saddle"
-                >
-                  <option value="">All breeds</option>
-                  {breeds.map((breed) => (
-                    <option key={breed} value={breed}>
-                      {breed}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="min-w-[180px] flex-1 space-y-1.5">
-                <label
-                  htmlFor="sort"
-                  className="block font-body text-[0.65rem] font-bold uppercase tracking-widest text-onlight-dim"
-                >
-                  Sort by
-                </label>
-                <select
-                  id="sort"
-                  name="sort"
-                  defaultValue={sortParam}
-                  className="w-full rounded-lg border border-saddle/25 bg-paper px-4 py-2.5 text-sm text-onlight outline-none transition-colors focus:border-saddle"
-                >
-                  <option value="">Relevance</option>
-                  <option value="visits">Most visited</option>
-                  <option value="az">A-Z</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="rounded-full border border-saddle bg-saddle px-6 py-2.5 font-body text-sm font-bold uppercase tracking-wide text-paper transition-colors hover:bg-saddle-2"
-              >
-                Filter
-              </button>
-              {hasFilters && (
-                <Link
-                  href="/"
-                  className="font-body text-xs font-bold uppercase tracking-widest text-onlight-dim underline decoration-onlight-dim/40 underline-offset-2 transition-colors hover:text-saddle hover:decoration-saddle"
-                >
-                  Clear filters
-                </Link>
-              )}
-            </form>
+            <FilterForm
+              countries={countries}
+              breeds={breeds}
+              countryFilter={countryFilter}
+              breedFilter={breedFilter}
+              sortParam={sortParam}
+              hasFilters={hasFilters}
+            />
 
             <div className="mt-10">
               {pageKennels.length === 0 ? (
