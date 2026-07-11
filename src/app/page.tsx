@@ -9,6 +9,7 @@ interface DirectoryKennel {
   logo_url: string | null;
   country: string | null;
   city: string | null;
+  view_count: number;
 }
 
 // Cada criadero escribe la raza a su manera ("Mini Bully", "XL Bully",
@@ -57,7 +58,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   // quien la esta viendo.
   const { data: kennelRows } = await supabase
     .from("kennels")
-    .select("id, name, slug, logo_url, country, city")
+    .select("id, name, slug, logo_url, country, city, view_count")
     .eq("status", "active")
     .order("name", { ascending: true });
 
@@ -512,7 +513,7 @@ function KennelCard({
   return (
     <Link
       href={`/${kennel.slug}`}
-      className="group flex items-center gap-4 border border-saddle/20 bg-parchment/40 p-5 transition-colors hover:border-saddle"
+      className="group relative flex items-center gap-4 border border-saddle/20 bg-parchment/40 p-5 pb-7 transition-colors hover:border-saddle"
     >
       {kennel.logo_url ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -540,6 +541,11 @@ function KennelCard({
           {dogCount} dog{dogCount === 1 ? "" : "s"}
         </p>
       </div>
+      {kennel.view_count > 0 && (
+        <span className="absolute bottom-2 right-3 font-body text-[0.65rem] font-bold uppercase tracking-wide text-onlight-dim/60">
+          {kennel.view_count} visit{kennel.view_count === 1 ? "" : "s"}
+        </span>
+      )}
     </Link>
   );
 }

@@ -63,6 +63,7 @@ export interface Kennel {
   status: string;
   plan: KennelPlan;
   accent_color: string;
+  view_count: number;
   created_at: string;
 }
 
