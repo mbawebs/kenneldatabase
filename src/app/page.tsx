@@ -11,6 +11,7 @@ interface DirectoryKennel {
   country: string | null;
   city: string | null;
   view_count: number;
+  featured: boolean;
 }
 
 // Cada criadero escribe la raza a su manera ("Mini Bully", "XL Bully",
@@ -122,7 +123,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   // quien la esta viendo.
   const { data: kennelRows } = await supabase
     .from("kennels")
-    .select("id, name, slug, logo_url, country, city, view_count")
+    .select("id, name, slug, logo_url, country, city, view_count, featured")
     .eq("status", "active")
     .order("name", { ascending: true });
 
@@ -167,8 +168,14 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   // "Relevance" (el default) no es un solo numero: se pondera perfil
   // mas completo (mas perros publicados) primero, luego popularidad
   // (mas visitas), con el nombre como ultimo desempate. "Most visited"
-  // y "A-Z" son ordenes directos, sin ambiguedad.
+  // y "A-Z" son ordenes directos, sin ambiguedad. En los tres casos,
+  // "featured" manda primero: los kennels destacados (marcados desde
+  // /admin) siempre aparecen antes que el resto, sin importar el
+  // orden/filtro que haya elegido el visitante.
   const sortedKennels = [...filteredKennels].sort((a, b) => {
+    if (a.featured !== b.featured) {
+      return a.featured ? -1 : 1;
+    }
     if (sortParam === "az") {
       return a.name.localeCompare(b.name);
     }
@@ -565,8 +572,17 @@ function KennelCard({
   return (
     <Link
       href={`/${kennel.slug}`}
-      className="group relative flex items-center gap-4 border border-saddle/20 bg-parchment/40 p-5 pb-7 transition-colors hover:border-saddle"
+      className={`group relative flex items-center gap-4 border p-5 pb-7 transition-colors ${
+        kennel.featured
+          ? "border-brass/70 bg-brass/[0.06] hover:border-brass"
+          : "border-saddle/20 bg-parchment/40 hover:border-saddle"
+      }`}
     >
+      {kennel.featured && (
+        <span className="absolute -top-2.5 left-4 rounded-full border border-brass bg-paper px-2.5 py-0.5 font-body text-[0.6rem] font-bold uppercase tracking-widest text-saddle">
+          ★ Featured
+        </span>
+      )}
       {kennel.logo_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

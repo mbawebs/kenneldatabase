@@ -100,6 +100,24 @@ export async function toggleKennelStatus(formData: FormData) {
   revalidatePath("/admin");
 }
 
+// "featured" solo se toca desde aqui — no existe ningun input para
+// este campo en KennelInfoForm/updateKennel (el formulario que usan
+// tanto /dashboard como /admin/kennels/[id]), asi que el dueño del
+// kennel no tiene forma de marcarse a si mismo como destacado.
+export async function toggleKennelFeatured(formData: FormData) {
+  await requireAdmin();
+
+  const id = String(formData.get("id") ?? "");
+  const nextFeatured = formData.get("nextFeatured") === "true";
+  if (!id) return;
+
+  const supabase = await createClient();
+  await supabase.from("kennels").update({ featured: nextFeatured }).eq("id", id);
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
 export interface CreateKennelUserState {
   error: string | null;
   success?: boolean;

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { toggleKennelStatus } from "./actions";
+import { toggleKennelFeatured, toggleKennelStatus } from "./actions";
 import type { Kennel } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 10;
@@ -107,6 +107,7 @@ export default function KennelsTable({ kennels }: { kennels: Kennel[] }) {
               <th className="p-3 font-medium">Slug</th>
               <th className="p-3 font-medium">Status</th>
               <th className="p-3 font-medium">Plan</th>
+              <th className="p-3 font-medium">Featured</th>
               <th className="p-3" />
             </tr>
           </thead>
@@ -134,6 +135,15 @@ export default function KennelsTable({ kennels }: { kennels: Kennel[] }) {
                 <td className="p-3 text-onlight-dim dark:text-ink-text-dim">
                   {kennel.plan}
                 </td>
+                <td className="p-3">
+                  {kennel.featured ? (
+                    <span className="border border-brass/50 px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-wide text-brass">
+                      ★ Featured
+                    </span>
+                  ) : (
+                    <span className="text-onlight-dim/60 dark:text-ink-text-dim/50">—</span>
+                  )}
+                </td>
                 <td className="p-3 text-right">
                   <div className="flex justify-end gap-2">
                     <Link
@@ -142,6 +152,20 @@ export default function KennelsTable({ kennels }: { kennels: Kennel[] }) {
                     >
                       Manage
                     </Link>
+                    <form action={toggleKennelFeatured}>
+                      <input type="hidden" name="id" value={kennel.id} />
+                      <input
+                        type="hidden"
+                        name="nextFeatured"
+                        value={kennel.featured ? "false" : "true"}
+                      />
+                      <button
+                        type="submit"
+                        className="border border-saddle/30 px-3 py-1 font-mono text-[0.68rem] uppercase tracking-wide hover:bg-saddle/5 dark:border-brass/30 dark:hover:bg-brass/10"
+                      >
+                        {kennel.featured ? "Unfeature" : "Feature"}
+                      </button>
+                    </form>
                     <form action={toggleKennelStatus}>
                       <input type="hidden" name="id" value={kennel.id} />
                       <input
@@ -163,7 +187,7 @@ export default function KennelsTable({ kennels }: { kennels: Kennel[] }) {
             {pageKennels.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="p-3 text-center text-onlight-dim dark:text-ink-text-dim"
                 >
                   {query ? "No kennels match that search." : "No kennels yet."}

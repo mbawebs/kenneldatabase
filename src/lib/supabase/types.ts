@@ -78,6 +78,10 @@ export interface Kennel {
   plan: KennelPlan;
   accent_color: string;
   view_count: number;
+  // Solo editable desde /admin (nunca desde el dashboard del dueño):
+  // marca el kennel como destacado para que aparezca primero en el
+  // home, sin importar el orden/filtro que el visitante haya elegido.
+  featured: boolean;
   created_at: string;
 }
 
