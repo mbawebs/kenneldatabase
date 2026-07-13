@@ -253,6 +253,25 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             Browse studs, females, and litters from breeders across the
             directory.
           </p>
+
+          {/* CTA para dueños de criaderos que aun no estan en el
+              directorio — vive dentro del mismo hero, debajo del
+              subtitulo, sin tocar el titulo/subtitulo existentes. */}
+          <div className="mt-10 border-t border-white/15 pt-8">
+            <h2 className="font-impact text-2xl uppercase leading-tight text-white sm:text-3xl">
+              Want Your Kennel Featured?
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-white/80 sm:text-base">
+              Showcase your dogs, productions, contact information, and
+              social media on your own dedicated kennel page.
+            </p>
+            <Link
+              href="/list-your-kennel"
+              className="mt-5 inline-block rounded-full border border-brass bg-brass px-8 py-3 font-body text-sm font-bold uppercase tracking-wide text-ink transition-colors hover:bg-brass-dim"
+            >
+              List Your Kennel
+            </Link>
+          </div>
         </div>
       </div>
 
