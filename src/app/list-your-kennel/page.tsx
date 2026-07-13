@@ -11,7 +11,7 @@ const INSTAGRAM_URL = "https://www.instagram.com/marckbarrera_art/";
 
 const INCLUDED_ITEMS = [
   "Your own dedicated kennel page",
-  "Sections for studs, females, productions, litters, and available dogs",
+  "Sections for studs, females, productions, breedings, available dogs, and contact information",
   "Your kennel logo, description, location, and contact information",
   "Direct links to Instagram, Facebook, website, and more",
   "Placement inside the searchable Kennel Database directory",
@@ -93,12 +93,14 @@ export default function ListYourKennelPage() {
                 price="$1.99"
                 period="/month"
                 title="Directory Maintenance"
+                note="First 30 days free"
                 description="Keeps your kennel active in the directory and helps cover platform hosting and maintenance."
               />
             </div>
             <p className="mx-auto mt-6 max-w-md text-center text-sm font-medium text-onlight-dim">
-              $99 one-time activation, plus $1.99/month to stay listed in
-              the directory.
+              $99 one-time activation. Your first 30 days of directory
+              maintenance are free, then $1.99/month to stay listed in the
+              directory.
             </p>
           </section>
 
@@ -149,11 +151,13 @@ function PricingCard({
   price,
   period,
   title,
+  note,
   description,
 }: {
   price: string;
   period?: string;
   title: string;
+  note?: string;
   description: string;
 }) {
   return (
@@ -169,6 +173,11 @@ function PricingCard({
       <p className="mt-2 font-body text-sm font-bold uppercase tracking-wide text-onlight">
         {title}
       </p>
+      {note && (
+        <p className="mt-1 font-body text-xs font-bold uppercase tracking-wide text-hunter">
+          {note}
+        </p>
+      )}
       <p className="mt-3 text-sm text-onlight-dim">{description}</p>
     </div>
   );
