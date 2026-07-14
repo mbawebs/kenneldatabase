@@ -100,22 +100,92 @@ export async function toggleKennelStatus(formData: FormData) {
   revalidatePath("/admin");
 }
 
-// "featured" solo se toca desde aqui — no existe ningun input para
-// este campo en KennelInfoForm/updateKennel (el formulario que usan
-// tanto /dashboard como /admin/kennels/[id]), asi que el dueño del
-// kennel no tiene forma de marcarse a si mismo como destacado.
-export async function toggleKennelFeatured(formData: FormData) {
+export interface SetFeaturedPositionState {
+  error: string | null;
+  success?: boolean;
+  conflict: { position: number; kennelName: string } | null;
+}
+
+// "featured_position" solo se toca desde aqui — no existe ningun
+// input para este campo en KennelInfoForm/updateKennel (el formulario
+// que usan tanto /dashboard como /admin/kennels/[id]), asi que el
+// dueño del kennel no tiene forma de asignarse una posicion.
+//
+// Dos capas contra posiciones duplicadas:
+// 1. Aqui: antes de escribir, se busca si otro kennel ya tiene esa
+//    posicion. Si lo hay y "force" no vino en true, se corta sin
+//    escribir nada y se regresa el conflicto (posicion + nombre del
+//    que la tiene) para que el admin decida en la UI. Si "force" es
+//    true, se libera la posicion del otro kennel primero (dos updates
+//    secuenciales, no una transaccion — ver migracion) y luego se
+//    asigna al kennel actual.
+// 2. En la base de datos: un indice unico parcial en
+//    kennels.featured_position (solo aplica a filas no-null) es la
+//    garantia real contra duplicados — si por una condicion de
+//    carrera dos admins asignan la misma posicion casi al mismo
+//    tiempo, Postgres rechaza el segundo write con un error 23505,
+//    que se atrapa mas abajo como red de seguridad.
+export async function setKennelFeaturedPosition(
+  _prevState: SetFeaturedPositionState,
+  formData: FormData
+): Promise<SetFeaturedPositionState> {
   await requireAdmin();
 
   const id = String(formData.get("id") ?? "");
-  const nextFeatured = formData.get("nextFeatured") === "true";
-  if (!id) return;
+  const positionRaw = String(formData.get("position") ?? "");
+  const force = formData.get("force") === "true";
+  if (!id) return { error: "Missing kennel id.", conflict: null };
+
+  let position: number | null = null;
+  if (positionRaw) {
+    position = Number(positionRaw);
+    if (!Number.isInteger(position) || position < 1 || position > 6) {
+      return { error: "Invalid position.", conflict: null };
+    }
+  }
 
   const supabase = await createClient();
-  await supabase.from("kennels").update({ featured: nextFeatured }).eq("id", id);
+
+  if (position !== null) {
+    const { data: holder } = await supabase
+      .from("kennels")
+      .select("id, name")
+      .eq("featured_position", position)
+      .neq("id", id)
+      .maybeSingle();
+
+    if (holder) {
+      if (!force) {
+        return {
+          error: null,
+          conflict: { position, kennelName: holder.name },
+        };
+      }
+      await supabase
+        .from("kennels")
+        .update({ featured_position: null })
+        .eq("id", holder.id);
+    }
+  }
+
+  const { error } = await supabase
+    .from("kennels")
+    .update({ featured_position: position })
+    .eq("id", id);
+
+  if (error) {
+    if (error.code === "23505") {
+      return {
+        error: "That position was just taken by another kennel — try again.",
+        conflict: null,
+      };
+    }
+    return { error: error.message, conflict: null };
+  }
 
   revalidatePath("/admin");
   revalidatePath("/");
+  return { error: null, success: true, conflict: null };
 }
 
 export interface CreateKennelUserState {

@@ -79,9 +79,10 @@ export interface Kennel {
   accent_color: string;
   view_count: number;
   // Solo editable desde /admin (nunca desde el dashboard del dueño):
-  // marca el kennel como destacado para que aparezca primero en el
-  // home, sin importar el orden/filtro que el visitante haya elegido.
-  featured: boolean;
+  // 1-6 = posicion destacada en el home (1 primero), null = sin
+  // destacar. Un indice unico parcial en la base de datos garantiza
+  // que nunca haya dos kennels con la misma posicion.
+  featured_position: number | null;
   created_at: string;
 }
 
