@@ -1,18 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import FilterForm from "./FilterForm";
+import KennelResults from "./KennelResults";
+import type { DirectoryKennel } from "./KennelCard";
 import type { SiteSettings } from "@/lib/supabase/types";
-
-interface DirectoryKennel {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url: string | null;
-  country: string | null;
-  city: string | null;
-  view_count: number;
-  featured_position: number | null;
-}
 
 // Cada criadero escribe la raza a su manera ("Mini Bully", "XL Bully",
 // "Designer Frenchie", "Big Rope Frenchie"...) — de raza libre, sin
@@ -107,8 +98,6 @@ const EMPTY_SETTINGS: SiteSettings = {
   mobile_banner_bottom_link: null,
 };
 
-const PAGE_SIZE = 6;
-
 export default async function HomePage({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
   const countryFilter = firstValue(params.country);
@@ -194,15 +183,12 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     );
   });
 
-  // Paginado simple: cambiar de filtro/orden siempre resetea a la
-  // pagina 1 (el form GET solo manda country/breed/sort, "page" queda
-  // fuera del querystring sin necesidad de manejarlo aparte).
-  const totalPages = Math.max(1, Math.ceil(sortedKennels.length / PAGE_SIZE));
-  const requestedPage = Number(firstValue(params.page)) || 1;
-  const currentPage = Math.min(Math.max(1, requestedPage), totalPages);
-  const pageKennels = sortedKennels.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+  // Busqueda por nombre y paginado ahora viven del lado del cliente
+  // (KennelResults.tsx), sobre este mismo arreglo ya filtrado por
+  // country/breed y ordenado — asi que aqui ya no hace falta ni
+  // paginar ni leer un "page" de la URL.
+  const dogCounts = Object.fromEntries(
+    Array.from(dogsByKennel.entries()).map(([id, entry]) => [id, entry.count])
   );
 
   const { data: settingsRow } = await supabase
@@ -316,30 +302,12 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             />
 
             <div className="mt-10">
-              {pageKennels.length === 0 ? (
-                <p className="py-16 text-center text-onlight-dim">
-                  No kennels match those filters yet.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  {pageKennels.map((kennel) => (
-                    <KennelCard
-                      key={kennel.id}
-                      kennel={kennel}
-                      dogCount={dogsByKennel.get(kennel.id)?.count ?? 0}
-                    />
-                  ))}
-                </div>
-              )}
+              <KennelResults
+                key={`${countryFilter}|${breedFilter}|${sortParam}`}
+                kennels={sortedKennels}
+                dogCounts={dogCounts}
+              />
             </div>
-
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              countryFilter={countryFilter}
-              breedFilter={breedFilter}
-              sortParam={sortParam}
-            />
 
             <MobileBanner
               imageUrl={settings.mobile_banner_bottom_image_url}
@@ -510,115 +478,6 @@ function MobileBanner({
       </span>
       <span className="text-xs text-onlight-dim">Contact us</span>
     </a>
-  );
-}
-
-function Pagination({
-  currentPage,
-  totalPages,
-  countryFilter,
-  breedFilter,
-  sortParam,
-}: {
-  currentPage: number;
-  totalPages: number;
-  countryFilter: string;
-  breedFilter: string;
-  sortParam: string;
-}) {
-  if (totalPages <= 1) return null;
-
-  function buildPageHref(page: number) {
-    const qs = new URLSearchParams();
-    if (countryFilter) qs.set("country", countryFilter);
-    if (breedFilter) qs.set("breed", breedFilter);
-    if (sortParam) qs.set("sort", sortParam);
-    if (page > 1) qs.set("page", String(page));
-    const query = qs.toString();
-    return query ? `/?${query}` : "/";
-  }
-
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
-
-  return (
-    <nav
-      aria-label="Pagination"
-      className="mt-10 flex flex-wrap items-center justify-center gap-2"
-    >
-      {pages.map((page) => (
-        <Link
-          key={page}
-          href={buildPageHref(page)}
-          aria-current={page === currentPage ? "page" : undefined}
-          className={`flex h-9 w-9 items-center justify-center rounded-full font-body text-sm font-bold transition-colors ${
-            page === currentPage
-              ? "bg-saddle text-paper"
-              : "text-onlight-dim hover:bg-parchment"
-          }`}
-        >
-          {page}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
-function KennelCard({
-  kennel,
-  dogCount,
-}: {
-  kennel: DirectoryKennel;
-  dogCount: number;
-}) {
-  const location = [kennel.city, kennel.country].filter(Boolean).join(", ");
-  const isFeatured = kennel.featured_position !== null;
-
-  return (
-    <Link
-      href={`/${kennel.slug}`}
-      className={`group relative flex items-center gap-4 border p-5 pb-7 transition-colors ${
-        isFeatured
-          ? "border-brass/70 bg-brass/[0.06] hover:border-brass"
-          : "border-saddle/20 bg-parchment/40 hover:border-saddle"
-      }`}
-    >
-      {isFeatured && (
-        <span className="absolute -top-2.5 left-4 rounded-full border border-brass bg-paper px-2.5 py-0.5 font-body text-[0.6rem] font-bold uppercase tracking-widest text-saddle">
-          ★ Featured
-        </span>
-      )}
-      {kennel.logo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={kennel.logo_url}
-          alt=""
-          className="h-14 w-14 shrink-0 rounded-full object-cover"
-        />
-      ) : (
-        <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-saddle/10 font-impact text-xl text-saddle"
-          aria-hidden="true"
-        >
-          {kennel.name.charAt(0).toUpperCase()}
-        </div>
-      )}
-      <div className="min-w-0">
-        <p className="truncate font-impact text-xl uppercase leading-tight text-onlight group-hover:text-saddle">
-          {kennel.name}
-        </p>
-        {location && (
-          <p className="truncate text-sm text-onlight-dim">{location}</p>
-        )}
-        <p className="text-xs font-bold uppercase tracking-wide text-onlight-dim/70">
-          {dogCount} dog{dogCount === 1 ? "" : "s"}
-        </p>
-      </div>
-      {kennel.view_count > 0 && (
-        <span className="absolute bottom-2 right-3 font-body text-[0.65rem] font-bold uppercase tracking-wide text-onlight-dim/60">
-          {kennel.view_count} visit{kennel.view_count === 1 ? "" : "s"}
-        </span>
-      )}
-    </Link>
   );
 }
 
