@@ -58,7 +58,7 @@ export default function DogForm({
       category: categories[0],
       breed: null,
       color: null,
-      date_of_birth: null,
+      age: null,
       price: null,
       description: null,
       pedigree_url: null,
@@ -158,15 +158,15 @@ export default function DogForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label className={labelClass} htmlFor={fieldId("date_of_birth")}>
-            Birthday
+          <label className={labelClass} htmlFor={fieldId("age")}>
+            Age
           </label>
           <input
-            id={fieldId("date_of_birth")}
-            name="date_of_birth"
-            type="date"
-            value={draft.date_of_birth ?? ""}
-            onChange={(e) => update("date_of_birth", e.target.value)}
+            id={fieldId("age")}
+            name="age"
+            placeholder="e.g. 1 year old"
+            value={draft.age ?? ""}
+            onChange={(e) => update("age", e.target.value)}
             className={inputClass}
           />
         </div>

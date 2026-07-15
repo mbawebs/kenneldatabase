@@ -196,7 +196,7 @@ function parseDogForm(
       category,
       breed: optionalField(formData, "breed"),
       color: optionalField(formData, "color"),
-      date_of_birth: optionalField(formData, "date_of_birth"),
+      age: optionalField(formData, "age"),
       price: optionalField(formData, "price"),
       description: optionalField(formData, "description"),
       pedigree_url: optionalField(formData, "pedigree_url"),

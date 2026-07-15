@@ -476,7 +476,7 @@ function DogCard({ dog }: { dog: Dog }) {
   const specRows = [
     dog.breed && { label: "Breed", value: dog.breed },
     dog.color && { label: "Color", value: dog.color },
-    dog.date_of_birth && { label: "Born", value: dog.date_of_birth },
+    dog.age && { label: "Age", value: dog.age },
   ].filter(Boolean) as { label: string; value: string }[];
 
   return (

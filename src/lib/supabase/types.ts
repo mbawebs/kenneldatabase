@@ -106,7 +106,7 @@ export interface Dog {
   category: DogCategory;
   breed: string | null;
   color: string | null;
-  date_of_birth: string | null;
+  age: string | null;
   price: string | null;
   description: string | null;
   pedigree_url: string | null;
