@@ -618,6 +618,15 @@ function LockedSectionNotice({
 
 const CHECKOUT_INITIAL_STATE: CreateCheckoutState = { error: null };
 
+// Fase 4: para quien no quiere hacerlo el mismo, un segundo boton
+// (mas caro, solo contacto por Instagram, sin checkout) al lado del
+// de auto-upgrade — a proposito, para que la comparacion haga que el
+// upgrade de $199 MXN/mes se sienta como la opcion obvia. El precio
+// en dolares usa el mismo tipo de cambio implicito que ya usa el
+// boton de PRO ($199 MXN ~ $15 USD, osea ~13.27 MXN por USD), para
+// que las dos cifras sean consistentes entre si.
+const WE_SET_IT_UP_URL = "https://www.instagram.com/marckbarrera_art/";
+
 // Crea una sesion real de Stripe Checkout y redirige ahi mismo — no
 // es un link estatico. kennelId viaja como hidden input porque
 // createProCheckoutSession es un Server Action (POST), no puede leer
@@ -632,7 +641,7 @@ function UpgradeToProButton({ kennelId }: { kennelId: string }) {
   );
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2.5">
       <form action={formAction}>
         <input type="hidden" name="kennel_id" value={kennelId} />
         <button
@@ -650,6 +659,15 @@ function UpgradeToProButton({ kennelId }: { kennelId: string }) {
           {state.error}
         </p>
       )}
+
+      <a
+        href={WE_SET_IT_UP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="max-w-[220px] rounded-full border border-saddle/40 px-5 py-2.5 text-center text-[0.68rem] font-bold uppercase leading-snug tracking-wide text-onlight-dim transition-colors hover:border-saddle hover:text-onlight dark:border-brass/40 dark:text-ink-text-dim dark:hover:border-brass dark:hover:text-ink-text"
+      >
+        We Set It Up For You — $1,799 MXN (~$136 USD) + $199 MXN/mo
+      </a>
     </div>
   );
 }
