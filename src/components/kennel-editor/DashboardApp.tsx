@@ -24,11 +24,11 @@ import DogForm from "./DogForm";
 import BreedingForm from "./BreedingForm";
 import ChangePasswordForm from "./ChangePasswordForm";
 import { deleteDog, deleteBreeding, reorderDogs, reorderBreedings } from "./actions";
+import { createProCheckoutSession } from "./stripe-actions";
 import {
   FREE_PLAN_AVAILABLE_MESSAGE,
   FREE_PLAN_BREEDINGS_MESSAGE,
   FREE_PLAN_DOG_LIMIT,
-  UPGRADE_TO_PRO_URL,
   freePlanDogLimitMessage,
   isFreePlan,
 } from "./plan-limits";
@@ -135,6 +135,34 @@ export default function DashboardApp({
   const desktopPreviewRef = useRef<HTMLIFrameElement>(null);
   const mobilePreviewRef = useRef<HTMLIFrameElement>(null);
 
+  // Stripe redirige de vuelta a /dashboard?upgraded=1 justo despues
+  // del pago, pero el webhook que en verdad mueve plan a 'pro' llega
+  // por su cuenta (puede tardar un par de segundos) — este banner
+  // avisa que el pago se recibio aunque el dashboard todavia se vea
+  // en modo free por un momento. Se lee del lado del cliente (no
+  // useSearchParams, para no forzar un Suspense boundary en las dos
+  // paginas que renderizan DashboardApp) y se limpia el query param
+  // para que no se quede pegado si recargan.
+  const [justUpgraded, setJustUpgraded] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgraded") === "1") {
+      // window.location no existe durante el SSR: este estado solo
+      // puede saberse del lado del cliente, despues del primer
+      // render, o el HTML del servidor y el del cliente no
+      // coincidirian (hydration mismatch).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setJustUpgraded(true);
+      params.delete("upgraded");
+      const query = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        query ? `${window.location.pathname}?${query}` : window.location.pathname
+      );
+    }
+  }, []);
+
   // Borradores: mientras se edita algo (todavia sin guardar), el panel
   // de "Vista previa" debe reflejarlo al instante. Cada uno se limpia
   // al salir de su pantalla (o al guardar, que navega de vuelta).
@@ -212,14 +240,22 @@ export default function DashboardApp({
 
   if (view.screen === "menu") {
     content = (
-      <MenuScreen
-        dogs={dogs}
-        breedings={breedings}
-        publicUrl={publicUrl}
-        showAccount={!isAdmin}
-        applyFreeLimit={applyFreeLimit}
-        onNavigate={setView}
-      />
+      <div className="space-y-3">
+        {justUpgraded && (
+          <div className="rounded-2xl border border-hunter/30 bg-hunter/10 p-3.5 text-sm text-onlight dark:border-hunter-2/40 dark:bg-hunter-2/10 dark:text-ink-text">
+            Payment received! Activating your PRO plan — this can take a
+            few seconds. Refresh if sections still look locked.
+          </div>
+        )}
+        <MenuScreen
+          dogs={dogs}
+          breedings={breedings}
+          publicUrl={publicUrl}
+          showAccount={!isAdmin}
+          applyFreeLimit={applyFreeLimit}
+          onNavigate={setView}
+        />
+      </div>
     );
   } else if (view.screen === "info") {
     title = "Kennel info";
@@ -241,7 +277,7 @@ export default function DashboardApp({
       const isAtLimit =
         applyFreeLimit && !section.hardLockOnFree && items.length >= FREE_PLAN_DOG_LIMIT;
       content = isLocked ? (
-        <LockedSectionNotice message={FREE_PLAN_AVAILABLE_MESSAGE} />
+        <LockedSectionNotice kennelId={kennel.id} message={FREE_PLAN_AVAILABLE_MESSAGE} />
       ) : (
         <SectionListScreen
           items={items}
@@ -284,7 +320,7 @@ export default function DashboardApp({
     title = "Breedings";
     onBack = goMenu;
     content = applyFreeLimit ? (
-      <LockedSectionNotice message={FREE_PLAN_BREEDINGS_MESSAGE} />
+      <LockedSectionNotice kennelId={kennel.id} message={FREE_PLAN_BREEDINGS_MESSAGE} />
     ) : (
       <BreedingsListScreen
         items={breedings}
@@ -560,7 +596,13 @@ function MenuScreen({
 // siquiera se muestra la lista (aunque este vacia) — solo el mensaje
 // y el boton de upgrade. Distinto del "limite alcanzado" de
 // studs/females/productions, donde la lista SI se ve (hasta 2 perros).
-function LockedSectionNotice({ message }: { message: string }) {
+function LockedSectionNotice({
+  kennelId,
+  message,
+}: {
+  kennelId: string;
+  message: string;
+}) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-saddle/30 bg-parchment/30 p-8 text-center dark:border-brass/30 dark:bg-ink-2/50">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-saddle/10 text-saddle dark:bg-brass/10 dark:text-brass">
@@ -569,21 +611,26 @@ function LockedSectionNotice({ message }: { message: string }) {
       <p className="text-sm font-semibold text-onlight dark:text-ink-text">
         {message}
       </p>
-      <UpgradeToProButton />
+      <UpgradeToProButton kennelId={kennelId} />
     </div>
   );
 }
 
-function UpgradeToProButton() {
+// Crea una sesion real de Stripe Checkout y redirige ahi mismo — no
+// es un link estatico. kennelId viaja como hidden input porque
+// createProCheckoutSession es un Server Action (POST), no puede leer
+// props de React directamente.
+function UpgradeToProButton({ kennelId }: { kennelId: string }) {
   return (
-    <a
-      href={UPGRADE_TO_PRO_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="rounded-full border border-saddle bg-saddle px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-paper transition-colors hover:bg-saddle-2 dark:border-brass dark:bg-brass dark:text-ink dark:hover:bg-brass-dim"
-    >
-      Upgrade to PRO — $199 MXN/mo
-    </a>
+    <form action={createProCheckoutSession}>
+      <input type="hidden" name="kennel_id" value={kennelId} />
+      <button
+        type="submit"
+        className="rounded-full border border-saddle bg-saddle px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-paper transition-colors hover:bg-saddle-2 dark:border-brass dark:bg-brass dark:text-ink dark:hover:bg-brass-dim"
+      >
+        Upgrade to PRO — $199 MXN/mo (~$15 USD)
+      </button>
+    </form>
   );
 }
 
@@ -792,7 +839,7 @@ function SortableListScreen<T extends { id: string }>({
           <p className="text-sm font-semibold text-onlight dark:text-ink-text">
             {limitReachedMessage}
           </p>
-          <UpgradeToProButton />
+          <UpgradeToProButton kennelId={kennelId} />
         </div>
       ) : (
         <button

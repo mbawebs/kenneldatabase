@@ -98,6 +98,12 @@ export interface Kennel {
   // acceso del dia a dia lo decide kennel_users, no esta columna.
   // Null en los kennels dados de alta a mano desde /admin.
   owner_id: string | null;
+  // Se llenan solos desde el webhook de Stripe (nunca editables por
+  // el dueño del kennel — ver el trigger protect_kennel_plan_and_owner
+  // en la migracion de Fase 3). Null hasta que el kennel haga su
+  // primer checkout de PRO.
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
   created_at: string;
 }
 
