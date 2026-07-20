@@ -59,6 +59,28 @@ export default function ListYourKennelPage() {
       </div>
 
       <main className="bg-white text-onlight">
+        {/* Start Here: registro publico gratis (/signup) — la opcion
+            de hacerlo uno mismo. La seccion de pricing mas abajo
+            sigue siendo la opcion "nosotros lo hacemos por ti". */}
+        <section className="border-b border-saddle/15 bg-parchment/40 px-6 py-14 text-center sm:px-10">
+          <h2 className="font-impact text-2xl uppercase text-onlight sm:text-3xl">
+            Start Here — It&apos;s Free
+          </h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-onlight-dim sm:text-base">
+            Create your account and get a free kennel page in minutes. No
+            credit card required.
+          </p>
+          <Link
+            href="/signup"
+            className="mt-5 inline-block rounded-full border border-saddle bg-saddle px-8 py-3 font-body text-sm font-bold uppercase tracking-wide text-paper transition-colors hover:bg-saddle-2"
+          >
+            Sign Up Free
+          </Link>
+          <p className="mt-4 text-xs text-onlight-dim">
+            Prefer we set it up for you instead? See pricing below.
+          </p>
+        </section>
+
         <div className="mx-auto max-w-4xl px-6 py-16 sm:px-10">
           {/* Que incluye */}
           <section>

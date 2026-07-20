@@ -11,6 +11,14 @@ import {
   type KennelPlan,
   type SocialLink,
 } from "@/lib/supabase/types";
+import {
+  categoryGroupCategories,
+  FREE_PLAN_AVAILABLE_MESSAGE,
+  FREE_PLAN_BREEDINGS_MESSAGE,
+  FREE_PLAN_DOG_LIMIT,
+  freePlanDogLimitMessage,
+  isFreePlan,
+} from "./plan-limits";
 
 const DOG_CATEGORIES: DogCategory[] = [
   "stud",
@@ -50,6 +58,39 @@ async function requireKennelAccess(
 function optionalField(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
   return value === "" ? null : value;
+}
+
+// Se llama antes de crear/mover un perro hacia "category" en un
+// kennel plan 'free'. "available" esta bloqueado por completo;
+// stud/female/production+puppy tienen tope de FREE_PLAN_DOG_LIMIT
+// cada uno. excludeDogId se usa al editar un perro ya existente, para
+// no contarlo dos veces contra si mismo (asi un kennel que bajo de
+// PRO a free con mas perros de los que el plan permite puede seguir
+// editando los que ya tiene, solo no puede agregar mas).
+async function checkFreePlanDogLimit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  kennelId: string,
+  category: DogCategory,
+  excludeDogId?: string
+): Promise<string | null> {
+  if (category === "available") {
+    return FREE_PLAN_AVAILABLE_MESSAGE;
+  }
+
+  let query = supabase
+    .from("dogs")
+    .select("id", { count: "exact", head: true })
+    .eq("kennel_id", kennelId)
+    .in("category", categoryGroupCategories(category));
+  if (excludeDogId) {
+    query = query.neq("id", excludeDogId);
+  }
+  const { count } = await query;
+
+  if ((count ?? 0) >= FREE_PLAN_DOG_LIMIT) {
+    return freePlanDogLimitMessage();
+  }
+  return null;
 }
 
 export interface UpdateKennelState {
@@ -213,7 +254,7 @@ export async function createDog(
   if (!kennelId) {
     return { error: "Missing kennel id." };
   }
-  await requireKennelAccess(kennelId);
+  const { isAdmin } = await requireKennelAccess(kennelId);
 
   const parsed = parseDogForm(formData);
   if ("error" in parsed) {
@@ -221,6 +262,28 @@ export async function createDog(
   }
 
   const supabase = await createClient();
+
+  // Un admin gestionando el kennel de alguien mas (desde
+  // /admin/kennels/[id]) nunca esta sujeto al limite del plan — solo
+  // el dueño del kennel lo esta.
+  if (!isAdmin) {
+    const { data: kennelRow } = await supabase
+      .from("kennels")
+      .select("plan")
+      .eq("id", kennelId)
+      .maybeSingle();
+    if (kennelRow && isFreePlan(kennelRow.plan)) {
+      const limitError = await checkFreePlanDogLimit(
+        supabase,
+        kennelId,
+        parsed.data.category as DogCategory
+      );
+      if (limitError) {
+        return { error: limitError };
+      }
+    }
+  }
+
   const { error } = await supabase
     .from("dogs")
     .insert({ ...parsed.data, kennel_id: kennelId });
@@ -244,13 +307,13 @@ export async function updateDog(
     return { error: "Missing dog id." };
   }
 
-  // El kennel_id del perro se lee de la base de datos, no del
-  // formulario: asi evitamos depender de un campo que el navegador
-  // podria manipular.
+  // El kennel_id (y la categoria actual) del perro se leen de la base
+  // de datos, no del formulario: asi evitamos depender de campos que
+  // el navegador podria manipular.
   const supabase = await createClient();
   const { data: existingDog } = await supabase
     .from("dogs")
-    .select("kennel_id")
+    .select("kennel_id, category")
     .eq("id", dogId)
     .maybeSingle();
 
@@ -258,11 +321,37 @@ export async function updateDog(
     return { error: "Dog not found." };
   }
 
-  await requireKennelAccess(existingDog.kennel_id);
+  const { isAdmin } = await requireKennelAccess(existingDog.kennel_id);
 
   const parsed = parseDogForm(formData);
   if ("error" in parsed) {
     return { error: parsed.error };
+  }
+
+  const newCategory = parsed.data.category as DogCategory;
+
+  // El limite del plan free solo importa si la categoria en verdad
+  // esta cambiando — editar otros campos de un perro que ya excede
+  // el limite (por ejemplo, un kennel que bajo de PRO a free con mas
+  // perros de los que el plan permite) siempre debe poder seguir
+  // editandolo, solo no puede mover perros HACIA una categoria llena.
+  if (!isAdmin && newCategory !== existingDog.category) {
+    const { data: kennelRow } = await supabase
+      .from("kennels")
+      .select("plan")
+      .eq("id", existingDog.kennel_id)
+      .maybeSingle();
+    if (kennelRow && isFreePlan(kennelRow.plan)) {
+      const limitError = await checkFreePlanDogLimit(
+        supabase,
+        existingDog.kennel_id,
+        newCategory,
+        dogId
+      );
+      if (limitError) {
+        return { error: limitError };
+      }
+    }
   }
 
   const { error } = await supabase
@@ -346,7 +435,7 @@ export async function createBreeding(
   if (!kennelId) {
     return { error: "Missing kennel id." };
   }
-  await requireKennelAccess(kennelId);
+  const { isAdmin } = await requireKennelAccess(kennelId);
 
   const parsed = parseBreedingForm(formData);
   if ("error" in parsed) {
@@ -354,6 +443,22 @@ export async function createBreeding(
   }
 
   const supabase = await createClient();
+
+  // Breedings es una seccion 100% PRO en el plan free — no hay
+  // "hasta 2", es 0 hasta que se actualice el plan. Un kennel que
+  // baja de PRO a free conserva las que ya tenia (nunca se borran),
+  // solo no puede crear mas mientras siga en free.
+  if (!isAdmin) {
+    const { data: kennelRow } = await supabase
+      .from("kennels")
+      .select("plan")
+      .eq("id", kennelId)
+      .maybeSingle();
+    if (kennelRow && isFreePlan(kennelRow.plan)) {
+      return { error: FREE_PLAN_BREEDINGS_MESSAGE };
+    }
+  }
+
   const { error } = await supabase
     .from("breedings")
     .insert({ ...parsed.data, kennel_id: kennelId });

@@ -142,6 +142,16 @@ export function KeyIcon(props: { className?: string }) {
   );
 }
 
+export function LockIcon(props: { className?: string }) {
+  return base(
+    <>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+      <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+    </>,
+    props.className
+  );
+}
+
 // Agarradera para arrastrar (seis puntos, 2x3) — se usa en las
 // esquinas de cada foto para reordenarlas.
 export function GripIcon(props: { className?: string }) {

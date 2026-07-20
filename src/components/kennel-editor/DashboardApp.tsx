@@ -24,6 +24,14 @@ import DogForm from "./DogForm";
 import BreedingForm from "./BreedingForm";
 import ChangePasswordForm from "./ChangePasswordForm";
 import { deleteDog, deleteBreeding, reorderDogs, reorderBreedings } from "./actions";
+import {
+  FREE_PLAN_AVAILABLE_MESSAGE,
+  FREE_PLAN_BREEDINGS_MESSAGE,
+  FREE_PLAN_DOG_LIMIT,
+  UPGRADE_TO_PRO_URL,
+  freePlanDogLimitMessage,
+  isFreePlan,
+} from "./plan-limits";
 import type { Kennel, Dog, Breeding, DogCategory } from "@/lib/supabase/types";
 import {
   HomeIcon,
@@ -43,6 +51,7 @@ import {
   ExternalLinkIcon,
   GripIcon,
   KeyIcon,
+  LockIcon,
 } from "./icons";
 
 type IconComponent = (props: { className?: string }) => React.JSX.Element;
@@ -53,6 +62,10 @@ const DOG_SECTIONS: {
   categories: DogCategory[];
   icon: IconComponent;
   emptyHint: string;
+  // Solo "available": en plan free esta seccion no admite NINGUN
+  // perro (no es "hasta 2", es un candado completo), a diferencia de
+  // studs/females/productions que si permiten hasta FREE_PLAN_DOG_LIMIT.
+  hardLockOnFree?: boolean;
 }[] = [
   {
     key: "studs",
@@ -81,6 +94,7 @@ const DOG_SECTIONS: {
     categories: ["available"],
     icon: CheckCircleIcon,
     emptyHint: "Add a dog that's available",
+    hardLockOnFree: true,
   },
 ];
 
@@ -187,6 +201,11 @@ export default function DashboardApp({
     setView({ screen: "menu" });
   }
 
+  // Un admin gestionando el kennel de alguien mas nunca ve los
+  // candados de plan free — solo el dueño del kennel los ve, igual
+  // que en el servidor (ver createDog/createBreeding en actions.ts).
+  const applyFreeLimit = !isAdmin && isFreePlan(kennel.plan);
+
   let title: string | null = null;
   let onBack: (() => void) | null = null;
   let content: React.ReactNode;
@@ -198,6 +217,7 @@ export default function DashboardApp({
         breedings={breedings}
         publicUrl={publicUrl}
         showAccount={!isAdmin}
+        applyFreeLimit={applyFreeLimit}
         onNavigate={setView}
       />
     );
@@ -217,11 +237,17 @@ export default function DashboardApp({
       title = section.label;
       onBack = goMenu;
       const items = dogs.filter((d) => section.categories.includes(d.category));
-      content = (
+      const isLocked = applyFreeLimit && Boolean(section.hardLockOnFree);
+      const isAtLimit =
+        applyFreeLimit && !section.hardLockOnFree && items.length >= FREE_PLAN_DOG_LIMIT;
+      content = isLocked ? (
+        <LockedSectionNotice message={FREE_PLAN_AVAILABLE_MESSAGE} />
+      ) : (
         <SectionListScreen
           items={items}
           kennelId={kennel.id}
           emptyHint={section.emptyHint}
+          limitReachedMessage={isAtLimit ? freePlanDogLimitMessage() : null}
           onAdd={() =>
             setView({ screen: "dog-edit", sectionKey: section.key, dogId: null })
           }
@@ -257,7 +283,9 @@ export default function DashboardApp({
   } else if (view.screen === "breedings") {
     title = "Breedings";
     onBack = goMenu;
-    content = (
+    content = applyFreeLimit ? (
+      <LockedSectionNotice message={FREE_PLAN_BREEDINGS_MESSAGE} />
+    ) : (
       <BreedingsListScreen
         items={breedings}
         kennelId={kennel.id}
@@ -423,6 +451,7 @@ function MenuScreen({
   breedings,
   publicUrl,
   showAccount,
+  applyFreeLimit,
   onNavigate,
 }: {
   dogs: Dog[];
@@ -433,6 +462,9 @@ function MenuScreen({
   // sesion actual (la del admin), no la del dueño del kennel, asi que
   // se oculta para evitar esa confusion.
   showAccount: boolean;
+  // True solo para el dueño real de un kennel plan 'free' — un admin
+  // gestionando el kennel de alguien mas nunca ve estos candados.
+  applyFreeLimit: boolean;
   onNavigate: (view: View) => void;
 }) {
   const cards: {
@@ -440,6 +472,7 @@ function MenuScreen({
     label: string;
     icon: IconComponent;
     meta: string;
+    locked?: boolean;
     onClick: () => void;
   }[] = [
     {
@@ -451,11 +484,17 @@ function MenuScreen({
     },
     ...DOG_SECTIONS.map((section) => {
       const count = dogs.filter((d) => section.categories.includes(d.category)).length;
+      const locked = applyFreeLimit && Boolean(section.hardLockOnFree);
       return {
         key: section.key,
         label: section.label,
         icon: section.icon,
-        meta: count > 0 ? `${count} dog${count === 1 ? "" : "s"}` : section.emptyHint,
+        meta: locked
+          ? "PRO feature"
+          : count > 0
+            ? `${count} dog${count === 1 ? "" : "s"}`
+            : section.emptyHint,
+        locked,
         onClick: () => onNavigate({ screen: "section", sectionKey: section.key }),
       };
     }),
@@ -463,10 +502,12 @@ function MenuScreen({
       key: "breedings",
       label: "Breedings",
       icon: CalendarIcon,
-      meta:
-        breedings.length > 0
+      meta: applyFreeLimit
+        ? "PRO feature"
+        : breedings.length > 0
           ? `${breedings.length} breeding${breedings.length === 1 ? "" : "s"}`
           : "Add your first breeding",
+      locked: applyFreeLimit,
       onClick: () => onNavigate({ screen: "breedings" }),
     },
     ...(showAccount
@@ -491,8 +532,16 @@ function MenuScreen({
             key={card.key}
             type="button"
             onClick={card.onClick}
-            className="flex flex-col items-start gap-2.5 rounded-2xl border border-saddle/20 bg-white p-4 text-left transition-colors hover:border-saddle/40 dark:border-brass/20 dark:bg-ink-2 dark:hover:border-brass/40"
+            className="relative flex flex-col items-start gap-2.5 rounded-2xl border border-saddle/20 bg-white p-4 text-left transition-colors hover:border-saddle/40 dark:border-brass/20 dark:bg-ink-2 dark:hover:border-brass/40"
           >
+            {card.locked && (
+              <span
+                className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-saddle/10 text-saddle dark:bg-brass/10 dark:text-brass"
+                aria-hidden="true"
+              >
+                <LockIcon className="h-3.5 w-3.5" />
+              </span>
+            )}
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-saddle/10 text-saddle dark:bg-brass/10 dark:text-brass">
               <card.icon className="h-5 w-5" />
             </span>
@@ -504,6 +553,37 @@ function MenuScreen({
         ))}
       </div>
     </div>
+  );
+}
+
+// Candado completo: para "Available" y "Breedings" en plan free, ni
+// siquiera se muestra la lista (aunque este vacia) — solo el mensaje
+// y el boton de upgrade. Distinto del "limite alcanzado" de
+// studs/females/productions, donde la lista SI se ve (hasta 2 perros).
+function LockedSectionNotice({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-saddle/30 bg-parchment/30 p-8 text-center dark:border-brass/30 dark:bg-ink-2/50">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-saddle/10 text-saddle dark:bg-brass/10 dark:text-brass">
+        <LockIcon className="h-5 w-5" />
+      </span>
+      <p className="text-sm font-semibold text-onlight dark:text-ink-text">
+        {message}
+      </p>
+      <UpgradeToProButton />
+    </div>
+  );
+}
+
+function UpgradeToProButton() {
+  return (
+    <a
+      href={UPGRADE_TO_PRO_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rounded-full border border-saddle bg-saddle px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-paper transition-colors hover:bg-saddle-2 dark:border-brass dark:bg-brass dark:text-ink dark:hover:bg-brass-dim"
+    >
+      Upgrade to PRO — $199 MXN/mo
+    </a>
   );
 }
 
@@ -549,12 +629,17 @@ function SectionListScreen({
   items,
   kennelId,
   emptyHint,
+  limitReachedMessage,
   onAdd,
   onEdit,
 }: {
   items: Dog[];
   kennelId: string;
   emptyHint: string;
+  // No-null solo cuando ya se llego al tope del plan free (ver
+  // FREE_PLAN_DOG_LIMIT): reemplaza el boton de "Add" por un aviso +
+  // boton de upgrade, sin ocultar los perros que ya estan en la lista.
+  limitReachedMessage: string | null;
   onAdd: () => void;
   onEdit: (id: string) => void;
 }) {
@@ -563,6 +648,7 @@ function SectionListScreen({
       items={items}
       kennelId={kennelId}
       emptyHint={emptyHint}
+      limitReachedMessage={limitReachedMessage}
       onAdd={onAdd}
       onReorder={reorderDogs}
       renderRow={(dog) => (
@@ -623,6 +709,7 @@ function SortableListScreen<T extends { id: string }>({
   items,
   kennelId,
   emptyHint,
+  limitReachedMessage = null,
   onAdd,
   onReorder,
   renderRow,
@@ -630,6 +717,7 @@ function SortableListScreen<T extends { id: string }>({
   items: T[];
   kennelId: string;
   emptyHint: string;
+  limitReachedMessage?: string | null;
   onAdd: () => void;
   onReorder: (kennelId: string, orderedIds: string[]) => Promise<void>;
   renderRow: (item: T) => React.ReactNode;
@@ -690,20 +778,32 @@ function SortableListScreen<T extends { id: string }>({
         </SortableContext>
       </DndContext>
 
-      {items.length === 0 && (
+      {items.length === 0 && !limitReachedMessage && (
         <p className="text-sm text-onlight-dim dark:text-ink-text-dim">
           {emptyHint}.
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={onAdd}
-        className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-saddle/30 py-3.5 text-sm font-bold uppercase tracking-wide text-onlight dark:border-brass/30 dark:text-ink-text"
-      >
-        <PlusIcon className="h-4 w-4" />
-        Add
-      </button>
+      {limitReachedMessage ? (
+        <div className="flex flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed border-saddle/30 bg-parchment/30 p-5 text-center dark:border-brass/30 dark:bg-ink-2/50">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-saddle/10 text-saddle dark:bg-brass/10 dark:text-brass">
+            <LockIcon className="h-4 w-4" />
+          </span>
+          <p className="text-sm font-semibold text-onlight dark:text-ink-text">
+            {limitReachedMessage}
+          </p>
+          <UpgradeToProButton />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-saddle/30 py-3.5 text-sm font-bold uppercase tracking-wide text-onlight dark:border-brass/30 dark:text-ink-text"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Add
+        </button>
+      )}
     </div>
   );
 }
