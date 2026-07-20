@@ -5,9 +5,19 @@ export type DogCategory =
   | "production"
   | "puppy";
 
-export type KennelPlan = "demo" | "dashboard" | "multipage";
+// "demo"/"dashboard"/"multipage": kennels dados de alta a mano desde
+// /admin (flujo original). "free"/"pro": modelo freemium del
+// registro publico (/signup) — "free" trae limites de cantidad por
+// seccion, "pro" los quita. Ver Fase 2/3.
+export type KennelPlan = "demo" | "dashboard" | "multipage" | "free" | "pro";
 
-export const KENNEL_PLANS: KennelPlan[] = ["demo", "dashboard", "multipage"];
+export const KENNEL_PLANS: KennelPlan[] = [
+  "demo",
+  "dashboard",
+  "multipage",
+  "free",
+  "pro",
+];
 
 export type SocialPlatform =
   | "whatsapp"
@@ -83,6 +93,11 @@ export interface Kennel {
   // destacar. Un indice unico parcial en la base de datos garantiza
   // que nunca haya dos kennels con la misma posicion.
   featured_position: number | null;
+  // Quien se registro y creo este kennel via /signup. Solo se usa
+  // para hacer valer "un usuario, un kennel" a nivel de RLS — el
+  // acceso del dia a dia lo decide kennel_users, no esta columna.
+  // Null en los kennels dados de alta a mano desde /admin.
+  owner_id: string | null;
   created_at: string;
 }
 

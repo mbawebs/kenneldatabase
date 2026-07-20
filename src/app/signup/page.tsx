@@ -1,31 +1,17 @@
 "use client";
 
-import { Suspense, useActionState, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useActionState, useState } from "react";
 import Link from "next/link";
-import { login, type LoginState } from "./actions";
+import { signUp, type SignUpState } from "./actions";
 
-const initialState: LoginState = { error: null };
+const initialState: SignUpState = { error: null };
 
-// Publica a proposito (NEXT_PUBLIC_*): es el correo al que un dueño
-// de kennel sin acceso (contraseña olvidada, cuenta sin vincular,
-// etc.) puede escribir. No hay recuperacion de contraseña por email
-// todavia, asi que esta es la unica salida para alguien sin sesion.
-const ADMIN_CONTACT_EMAIL = process.env.NEXT_PUBLIC_ADMIN_CONTACT_EMAIL;
-
-function buildContactMailto(email: string) {
-  const subject = "Kennel Database — Login help";
-  const body =
-    "Hi,\n\nI'm having trouble logging into my Kennel Database dashboard.\n\nKennel name: \nWhat's happening: ";
-  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
-
-export default function LoginPage() {
-  const [state, formAction, isPending] = useActionState(login, initialState);
+export default function SignUpPage() {
+  const [state, formAction, isPending] = useActionState(signUp, initialState);
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-ink px-4 text-ink-text">
+    <main className="flex min-h-screen items-center justify-center bg-ink px-4 py-10 text-ink-text">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <div
@@ -46,9 +32,11 @@ export default function LoginPage() {
           className="space-y-5 border border-brass/20 bg-ink-2 p-8"
         >
           <div>
-            <h1 className="font-display text-2xl text-ink-text">Log in</h1>
+            <h1 className="font-display text-2xl text-ink-text">
+              Create your kennel
+            </h1>
             <p className="mt-1 text-sm text-ink-text-dim">
-              Access for registered kennels.
+              Free to start. Get your own page in the directory.
             </p>
           </div>
 
@@ -57,9 +45,22 @@ export default function LoginPage() {
               {state.error}
             </p>
           )}
-          <Suspense fallback={null}>
-            <PasswordChangedBanner />
-          </Suspense>
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="kennel_name"
+              className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-ink-text-dim"
+            >
+              Kennel name
+            </label>
+            <input
+              id="kennel_name"
+              name="kennel_name"
+              required
+              placeholder="Your kennel's name"
+              className="w-full border border-brass/25 bg-ink px-3 py-2.5 text-sm text-ink-text outline-none transition-colors focus:border-brass"
+            />
+          </div>
 
           <div className="space-y-1.5">
             <label
@@ -91,7 +92,8 @@ export default function LoginPage() {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 required
-                autoComplete="current-password"
+                minLength={8}
+                autoComplete="new-password"
                 className="w-full border border-brass/25 bg-ink px-3 py-2.5 pr-10 text-sm text-ink-text outline-none transition-colors focus:border-brass"
               />
               <button
@@ -104,6 +106,25 @@ export default function LoginPage() {
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
+            <p className="text-xs text-ink-text-dim">At least 8 characters.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="confirm_password"
+              className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-ink-text-dim"
+            >
+              Confirm password
+            </label>
+            <input
+              id="confirm_password"
+              name="confirm_password"
+              type={showPassword ? "text" : "password"}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="w-full border border-brass/25 bg-ink px-3 py-2.5 text-sm text-ink-text outline-none transition-colors focus:border-brass"
+            />
           </div>
 
           <button
@@ -111,38 +132,18 @@ export default function LoginPage() {
             disabled={isPending}
             className="w-full border border-brass bg-brass px-4 py-2.5 font-mono text-xs uppercase tracking-[0.14em] text-ink transition-colors hover:bg-brass-dim disabled:opacity-50"
           >
-            {isPending ? "Signing in..." : "Log in"}
+            {isPending ? "Creating your kennel..." : "Create my kennel"}
           </button>
 
-          {ADMIN_CONTACT_EMAIL && (
-            <a
-              href={buildContactMailto(ADMIN_CONTACT_EMAIL)}
-              className="block text-center text-xs text-ink-text-dim underline decoration-ink-text-dim/40 underline-offset-2 transition-colors hover:text-brass hover:decoration-brass"
-            >
-              Can&apos;t log in? Contact administration
-            </a>
-          )}
-
           <Link
-            href="/signup"
+            href="/login"
             className="block text-center text-xs text-ink-text-dim underline decoration-ink-text-dim/40 underline-offset-2 transition-colors hover:text-brass hover:decoration-brass"
           >
-            New here? Create your kennel
+            Already have a kennel? Log in
           </Link>
         </form>
       </div>
     </main>
-  );
-}
-
-function PasswordChangedBanner() {
-  const searchParams = useSearchParams();
-  if (searchParams.get("passwordChanged") !== "1") return null;
-
-  return (
-    <p className="border border-hunter-2 bg-hunter/20 p-3 text-sm text-ink-text">
-      Password updated. Log in with your new password.
-    </p>
   );
 }
 
