@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -24,7 +24,7 @@ import DogForm from "./DogForm";
 import BreedingForm from "./BreedingForm";
 import ChangePasswordForm from "./ChangePasswordForm";
 import { deleteDog, deleteBreeding, reorderDogs, reorderBreedings } from "./actions";
-import { createProCheckoutSession } from "./stripe-actions";
+import { createProCheckoutSession, type CreateCheckoutState } from "./stripe-actions";
 import {
   FREE_PLAN_AVAILABLE_MESSAGE,
   FREE_PLAN_BREEDINGS_MESSAGE,
@@ -616,21 +616,41 @@ function LockedSectionNotice({
   );
 }
 
+const CHECKOUT_INITIAL_STATE: CreateCheckoutState = { error: null };
+
 // Crea una sesion real de Stripe Checkout y redirige ahi mismo — no
 // es un link estatico. kennelId viaja como hidden input porque
 // createProCheckoutSession es un Server Action (POST), no puede leer
-// props de React directamente.
+// props de React directamente. useActionState (en vez de un <form
+// action={...}> a secas) es lo que deja mostrar el error de Stripe
+// aqui mismo si algo sale mal, en vez de que se pierda en la pagina
+// generica de error de Next.js.
 function UpgradeToProButton({ kennelId }: { kennelId: string }) {
+  const [state, formAction, isPending] = useActionState(
+    createProCheckoutSession,
+    CHECKOUT_INITIAL_STATE
+  );
+
   return (
-    <form action={createProCheckoutSession}>
-      <input type="hidden" name="kennel_id" value={kennelId} />
-      <button
-        type="submit"
-        className="rounded-full border border-saddle bg-saddle px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-paper transition-colors hover:bg-saddle-2 dark:border-brass dark:bg-brass dark:text-ink dark:hover:bg-brass-dim"
-      >
-        Upgrade to PRO — $199 MXN/mo (~$15 USD)
-      </button>
-    </form>
+    <div className="flex flex-col items-center gap-2">
+      <form action={formAction}>
+        <input type="hidden" name="kennel_id" value={kennelId} />
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded-full border border-saddle bg-saddle px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-paper transition-colors hover:bg-saddle-2 disabled:opacity-50 dark:border-brass dark:bg-brass dark:text-ink dark:hover:bg-brass-dim"
+        >
+          {isPending
+            ? "Redirecting to checkout…"
+            : "Upgrade to PRO — $199 MXN/mo (~$15 USD)"}
+        </button>
+      </form>
+      {state.error && (
+        <p className="max-w-xs text-xs text-oxblood dark:text-oxblood-2">
+          {state.error}
+        </p>
+      )}
+    </div>
   );
 }
 
