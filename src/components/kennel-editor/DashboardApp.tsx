@@ -685,9 +685,13 @@ function PublicLinkCard({ publicUrl }: { publicUrl: string }) {
     <div className="flex items-center gap-3 rounded-2xl border border-saddle/20 bg-white p-3.5 dark:border-brass/20 dark:bg-ink-2">
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold uppercase tracking-wide text-saddle dark:text-brass">
-          Public page link
+          Public page link (this is your website!)
         </p>
         <p className="truncate text-sm">{publicUrl}</p>
+        <p className="mt-1 text-xs text-onlight-dim dark:text-ink-text-dim">
+          Copy this link and paste it in your browser to see it live, share
+          it on social media, or add it to your Instagram bio.
+        </p>
       </div>
       <button
         type="button"
