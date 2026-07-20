@@ -6,6 +6,7 @@ import LightboxProvider from "@/components/lightbox/LightboxProvider";
 import ClickableImage from "@/components/lightbox/ClickableImage";
 import { SocialIcon } from "@/components/social-icons";
 import { buildSocialHref } from "@/lib/social-links";
+import { filterDogsForFreePlan, isFreePlan } from "@/lib/plan-limits";
 import {
   SOCIAL_PLATFORMS,
   type Breeding,
@@ -30,12 +31,25 @@ export default function KennelLandingView({
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const studs = dogs.filter((d) => d.category === "stud");
-  const females = dogs.filter((d) => d.category === "female");
-  const productions = dogs.filter(
+  // Un kennel que baja de PRO a free nunca pierde los perros que ya
+  // subio (el dashboard los sigue mostrando todos, editables/
+  // reordenables), pero aqui en lo que ve el publico si vuelve a
+  // aplicar el limite del plan free — si no, pagar un solo mes,
+  // subir perros sin limite y cancelar dejaria todo visible gratis
+  // para siempre, justo lo que el plan free deberia evitar. El orden
+  // en que ya vienen "dogs" (display_order) es el que el dueño eligio
+  // arrastrando en el dashboard, asi que "los primeros 2" son los que
+  // el dueño ya puso primero, no algo arbitrario.
+  const isFree = isFreePlan(kennel.plan);
+  const visibleDogs = isFree ? filterDogsForFreePlan(dogs) : dogs;
+  const visibleBreedings = isFree ? [] : breedings;
+
+  const studs = visibleDogs.filter((d) => d.category === "stud");
+  const females = visibleDogs.filter((d) => d.category === "female");
+  const productions = visibleDogs.filter(
     (d) => d.category === "production" || d.category === "puppy"
   );
-  const available = dogs.filter((d) => d.category === "available");
+  const available = visibleDogs.filter((d) => d.category === "available");
 
   const contactLinks = [
     kennel.phone && { label: "Call", href: `tel:${kennel.phone}` },
@@ -76,13 +90,13 @@ export default function KennelLandingView({
       node: <CardRow dogs={productions} />,
     });
   }
-  if (breedings.length > 0) {
+  if (visibleBreedings.length > 0) {
     sectionBlocks.push({
       key: "breedings",
       label: "Breedings",
       node: (
-        <CarouselRow count={breedings.length}>
-          {breedings.map((breeding) => (
+        <CarouselRow count={visibleBreedings.length}>
+          {visibleBreedings.map((breeding) => (
             <BreedingCard key={breeding.id} breeding={breeding} />
           ))}
         </CarouselRow>

@@ -31,7 +31,7 @@ import {
   FREE_PLAN_DOG_LIMIT,
   freePlanDogLimitMessage,
   isFreePlan,
-} from "./plan-limits";
+} from "@/lib/plan-limits";
 import type { Kennel, Dog, Breeding, DogCategory } from "@/lib/supabase/types";
 import {
   HomeIcon,

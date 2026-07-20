@@ -18,7 +18,7 @@ import {
   FREE_PLAN_DOG_LIMIT,
   freePlanDogLimitMessage,
   isFreePlan,
-} from "./plan-limits";
+} from "@/lib/plan-limits";
 
 const DOG_CATEGORIES: DogCategory[] = [
   "stud",
