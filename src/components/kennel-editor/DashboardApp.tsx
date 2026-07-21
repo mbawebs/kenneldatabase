@@ -30,7 +30,9 @@ import {
   FREE_PLAN_BREEDINGS_MESSAGE,
   FREE_PLAN_DOG_LIMIT,
   freePlanDogLimitMessage,
+  FROZEN_PLAN_MESSAGE,
   isFreePlan,
+  isFrozenPlan,
 } from "@/lib/plan-limits";
 import type { Kennel, Dog, Breeding, DogCategory } from "@/lib/supabase/types";
 import {
@@ -233,6 +235,10 @@ export default function DashboardApp({
   // candados de plan free — solo el dueño del kennel los ve, igual
   // que en el servidor (ver createDog/createBreeding en actions.ts).
   const applyFreeLimit = !isAdmin && isFreePlan(kennel.plan);
+  // 'frozen': nunca oculta ni candadea secciones (a diferencia de
+  // applyFreeLimit) — solo bloquea el boton de "Add" en todas ellas,
+  // sin importar cuantos items ya tenga cada una.
+  const applyFrozenLimit = !isAdmin && isFrozenPlan(kennel.plan);
 
   let title: string | null = null;
   let onBack: (() => void) | null = null;
@@ -274,8 +280,13 @@ export default function DashboardApp({
       onBack = goMenu;
       const items = dogs.filter((d) => section.categories.includes(d.category));
       const isLocked = applyFreeLimit && Boolean(section.hardLockOnFree);
-      const isAtLimit =
+      const isAtFreeLimit =
         applyFreeLimit && !section.hardLockOnFree && items.length >= FREE_PLAN_DOG_LIMIT;
+      const limitReachedMessage = applyFrozenLimit
+        ? FROZEN_PLAN_MESSAGE
+        : isAtFreeLimit
+          ? freePlanDogLimitMessage()
+          : null;
       content = isLocked ? (
         <LockedSectionNotice kennelId={kennel.id} message={FREE_PLAN_AVAILABLE_MESSAGE} />
       ) : (
@@ -283,7 +294,7 @@ export default function DashboardApp({
           items={items}
           kennelId={kennel.id}
           emptyHint={section.emptyHint}
-          limitReachedMessage={isAtLimit ? freePlanDogLimitMessage() : null}
+          limitReachedMessage={limitReachedMessage}
           onAdd={() =>
             setView({ screen: "dog-edit", sectionKey: section.key, dogId: null })
           }
@@ -325,6 +336,7 @@ export default function DashboardApp({
       <BreedingsListScreen
         items={breedings}
         kennelId={kennel.id}
+        limitReachedMessage={applyFrozenLimit ? FROZEN_PLAN_MESSAGE : null}
         onAdd={() => setView({ screen: "breeding-edit", breedingId: null })}
         onEdit={(id) => setView({ screen: "breeding-edit", breedingId: id })}
       />
@@ -759,11 +771,13 @@ function SectionListScreen({
 function BreedingsListScreen({
   items,
   kennelId,
+  limitReachedMessage = null,
   onAdd,
   onEdit,
 }: {
   items: Breeding[];
   kennelId: string;
+  limitReachedMessage?: string | null;
   onAdd: () => void;
   onEdit: (id: string) => void;
 }) {
@@ -772,6 +786,7 @@ function BreedingsListScreen({
       items={items}
       kennelId={kennelId}
       emptyHint="Add your first breeding"
+      limitReachedMessage={limitReachedMessage}
       onAdd={onAdd}
       onReorder={reorderBreedings}
       renderRow={(breeding) => (

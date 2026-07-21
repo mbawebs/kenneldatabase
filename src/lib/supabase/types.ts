@@ -6,10 +6,21 @@ export type DogCategory =
   | "puppy";
 
 // "demo"/"dashboard"/"multipage": kennels dados de alta a mano desde
-// /admin (flujo original). "free"/"pro": modelo freemium del
-// registro publico (/signup) — "free" trae limites de cantidad por
-// seccion, "pro" los quita. Ver Fase 2/3.
-export type KennelPlan = "demo" | "dashboard" | "multipage" | "free" | "pro";
+// /admin (flujo original), sin ningun limite. "free"/"pro": modelo
+// freemium del registro publico (/signup) — "free" trae limites de
+// cantidad por seccion, "pro" los quita. Ver Fase 2/3. "frozen":
+// kennels manuales que ya traian mas contenido del que el plan free
+// permitiria — el dueño puede seguir editando/reordenando/borrando
+// TODO lo que ya tiene (nada se oculta, ni en el dashboard ni en la
+// pagina publica), pero no puede agregar perros ni breedings nuevos
+// hasta actualizar a pro. Ver isFrozenPlan en plan-limits.ts.
+export type KennelPlan =
+  | "demo"
+  | "dashboard"
+  | "multipage"
+  | "free"
+  | "pro"
+  | "frozen";
 
 export const KENNEL_PLANS: KennelPlan[] = [
   "demo",
@@ -17,6 +28,7 @@ export const KENNEL_PLANS: KennelPlan[] = [
   "multipage",
   "free",
   "pro",
+  "frozen",
 ];
 
 export type SocialPlatform =

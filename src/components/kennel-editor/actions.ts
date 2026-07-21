@@ -17,7 +17,9 @@ import {
   FREE_PLAN_BREEDINGS_MESSAGE,
   FREE_PLAN_DOG_LIMIT,
   freePlanDogLimitMessage,
+  FROZEN_PLAN_MESSAGE,
   isFreePlan,
+  isFrozenPlan,
 } from "@/lib/plan-limits";
 
 const DOG_CATEGORIES: DogCategory[] = [
@@ -281,6 +283,8 @@ export async function createDog(
       if (limitError) {
         return { error: limitError };
       }
+    } else if (kennelRow && isFrozenPlan(kennelRow.plan)) {
+      return { error: FROZEN_PLAN_MESSAGE };
     }
   }
 
@@ -456,6 +460,9 @@ export async function createBreeding(
       .maybeSingle();
     if (kennelRow && isFreePlan(kennelRow.plan)) {
       return { error: FREE_PLAN_BREEDINGS_MESSAGE };
+    }
+    if (kennelRow && isFrozenPlan(kennelRow.plan)) {
+      return { error: FROZEN_PLAN_MESSAGE };
     }
   }
 

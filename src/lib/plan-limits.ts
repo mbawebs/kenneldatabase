@@ -9,6 +9,20 @@ export function isFreePlan(plan: KennelPlan): boolean {
   return plan === "free";
 }
 
+// 'frozen': kennels dados de alta a mano desde /admin que ya traian
+// mas contenido del que el plan free permitiria (mas de
+// FREE_PLAN_DOG_LIMIT por seccion, o con available/breedings ya
+// activos). A diferencia de 'free', 'frozen' NUNCA oculta ni bloquea
+// el acceso a lo que el dueño ya tiene — solo bloquea crear perros o
+// breedings nuevos, en cualquier seccion, sin importar el conteo
+// actual. Ver checkFreePlanDogLimit/createBreeding en actions.ts.
+export function isFrozenPlan(plan: KennelPlan): boolean {
+  return plan === "frozen";
+}
+
+export const FROZEN_PLAN_MESSAGE =
+  "This kennel is on a locked plan — you can still edit, reorder, or remove what's already here, but adding new dogs or breedings needs a PRO upgrade.";
+
 export const FREE_PLAN_DOG_LIMIT = 2;
 
 // 'production' y 'puppy' cuentan juntos contra el mismo tope (asi
