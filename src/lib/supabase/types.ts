@@ -127,9 +127,10 @@ export const ACCENT_COLOR_PRESETS: { label: string; value: string }[] = [
   { label: "Orange", value: "#e8720c" },
   { label: "Gold", value: "#c6a15b" },
   { label: "Yellow", value: "#e0b400" },
-  { label: "Green", value: "#1f7a3d" },
+  { label: "Green", value: "#00c853" },
   { label: "Blue", value: "#1f5fd2" },
   { label: "Purple", value: "#6b21d2" },
+  { label: "Pink", value: "#e0218a" },
 ];
 
 export interface Dog {
